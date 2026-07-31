@@ -123,10 +123,30 @@ export const dbService = {
   },
 
   async importApprovedProjects(projects: Omit<ProjectApproved, 'id' | 'created_at'>[]): Promise<{ inserted: number; updated: number }> {
-    const dbProjects = projects.map(p => ({
-      ...p,
-      total_savings: p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings
+    const dbProjects = projects.map((p: any) => ({
+      project_id: String(p.project_id || '').trim(),
+      project_title: String(p.project_title || '').trim(),
+      workshop: String(p.workshop || '').trim(),
+      project_type: String(p.project_type || '').trim(),
+      leader: String(p.leader || '').trim(),
+      facilitator: String(p.facilitator || '').trim(),
+      approval_date: p.approval_date,
+      completion_date: p.completion_date,
+      status: String(p.status || 'Approved').trim(),
+      op_contribution: Number(p.op_contribution || 0),
+      soft_savings: Number(p.soft_savings || 0),
+      inventory_savings: Number(p.inventory_savings || 0),
+      fte_savings: Number(p.fte_savings || 0),
+      one_time_savings: Number(p.one_time_savings || 0),
+      total_savings: Number((p.op_contribution || 0) + (p.soft_savings || 0) + (p.inventory_savings || 0) + (p.one_time_savings || 0)),
+      functional_area: String(p.functional_area || '').trim(),
+      project_category: String(p.project_category || 'General').trim(),
+      customer: String(p.customer || '').trim(),
+      business: String(p.business || '').trim()
     }));
+
+    // Log the final payload before saving
+    console.log('[Supabase Approved Import Payload]:', dbProjects);
 
     const { error } = await supabase
       .from('projects_approved')
@@ -148,10 +168,30 @@ export const dbService = {
   },
 
   async importOpenProjects(projects: Omit<ProjectOpen, 'id' | 'created_at'>[]): Promise<{ inserted: number; updated: number }> {
-    const dbProjects = projects.map(p => ({
-      ...p,
-      potential_savings: p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings
+    const dbProjects = projects.map((p: any) => ({
+      project_id: String(p.project_id || '').trim(),
+      project_title: String(p.project_title || '').trim(),
+      workshop: String(p.workshop || '').trim(),
+      project_type: String(p.project_type || '').trim(),
+      leader: String(p.leader || '').trim(),
+      facilitator: String(p.facilitator || '').trim(),
+      created_date: p.created_date,
+      completion_date: p.completion_date,
+      status: String(p.status || 'Open').trim(),
+      op_contribution: Number(p.op_contribution || 0),
+      soft_savings: Number(p.soft_savings || 0),
+      inventory_savings: Number(p.inventory_savings || 0),
+      fte_savings: Number(p.fte_savings || 0),
+      one_time_savings: Number(p.one_time_savings || 0),
+      potential_savings: Number((p.op_contribution || 0) + (p.soft_savings || 0) + (p.inventory_savings || 0) + (p.one_time_savings || 0)),
+      functional_area: String(p.functional_area || '').trim(),
+      project_category: String(p.project_category || 'General').trim(),
+      customer: String(p.customer || '').trim(),
+      business: String(p.business || '').trim()
     }));
+
+    // Log the final payload before saving
+    console.log('[Supabase Open Import Payload]:', dbProjects);
 
     const { error } = await supabase
       .from('projects_open')
