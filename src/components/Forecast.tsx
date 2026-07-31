@@ -34,7 +34,8 @@ const formatCurrency = (val: number) => {
 };
 
 export const Forecast: React.FC = () => {
-  const [fiscalYear, setFiscalYear] = useState<number>(2026);
+  const [fiscalYear, setFiscalYear] = useState<string>('FY26');
+  const [fiscalYears, setFiscalYears] = useState<any[]>([]);
   const [approvedProjects, setApprovedProjects] = useState<ProjectApproved[]>([]);
   const [openProjects, setOpenProjects] = useState<ProjectOpen[]>([]);
   const [targets, setTargets] = useState<SavingsTarget[]>([]);
@@ -43,14 +44,24 @@ export const Forecast: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [approved, open, targetList] = await Promise.all([
+      const [approved, open, targetList, fyList] = await Promise.all([
         dbService.getProjectsApproved(),
         dbService.getProjectsOpen(),
-        dbService.getSavingsTargets()
+        dbService.getSavingsTargets(),
+        dbService.getFiscalYears()
       ]);
       setApprovedProjects(approved);
       setOpenProjects(open);
       setTargets(targetList);
+      setFiscalYears(fyList);
+
+      // Default to active fiscal year
+      const activeFy = fyList.find(fy => fy.active);
+      if (activeFy) {
+        setFiscalYear(activeFy.fiscal_year);
+      } else if (fyList.length > 0) {
+        setFiscalYear(fyList[0].fiscal_year);
+      }
     } catch (e) {
       console.error('Error loading forecast data', e);
     } finally {
@@ -66,17 +77,9 @@ export const Forecast: React.FC = () => {
     };
   }, []);
 
-  const getProjectYear = (dateStr: string | null): number => {
-    if (!dateStr) return 0;
-    return new Date(dateStr).getFullYear();
-  };
-
   // Filter
-  const approvedFiltered = approvedProjects.filter(p => getProjectYear(p.approval_date) === fiscalYear);
-  const openFiltered = openProjects.filter(p => {
-    const year = p.completion_date ? getProjectYear(p.completion_date) : getProjectYear(p.created_date);
-    return year === fiscalYear;
-  });
+  const approvedFiltered = approvedProjects.filter(p => p.fiscal_year === fiscalYear);
+  const openFiltered = openProjects.filter(p => p.fiscal_year === fiscalYear);
 
   // Calculate annual target
   const yearTargets = targets.filter(t => t.fiscal_year === fiscalYear);
@@ -193,10 +196,11 @@ export const Forecast: React.FC = () => {
           <select 
             className="filter-select"
             value={fiscalYear} 
-            onChange={(e) => setFiscalYear(Number(e.target.value))}
+            onChange={(e) => setFiscalYear(e.target.value)}
           >
-            <option value={2026}>2026 Fiscal Year</option>
-            <option value={2027}>2027 Fiscal Year</option>
+            {fiscalYears.map(fy => (
+              <option key={fy.id} value={fy.fiscal_year}>{fy.fiscal_year} Fiscal Year</option>
+            ))}
           </select>
         </div>
         <div style={{ flexGrow: 1 }} />

@@ -29,6 +29,8 @@ export interface ProjectApproved {
   customer?: string;
   business?: string;
   created_at: string;
+  fiscal_year?: string;
+  fiscal_quarter?: string;
 }
 
 export interface ProjectOpen {
@@ -53,13 +55,22 @@ export interface ProjectOpen {
   customer?: string;
   business?: string;
   created_at: string;
+  fiscal_year?: string;
+  fiscal_quarter?: string;
 }
 
 export interface SavingsTarget {
   id: string;
-  fiscal_year: number;
+  fiscal_year: string;
   quarter: string; // 'Q1', 'Q2', 'Q3', 'Q4', or 'Annual'
   target_amount: number;
+  created_at: string;
+}
+
+export interface FiscalYear {
+  id: string;
+  fiscal_year: string;
+  active: boolean;
   created_at: string;
 }
 
@@ -96,7 +107,7 @@ export const dbService = {
     return data || [];
   },
 
-  async saveSavingsTarget(target: { fiscal_year: number; quarter: string; target_amount: number }): Promise<SavingsTarget> {
+  async saveSavingsTarget(target: { fiscal_year: string; quarter: string; target_amount: number }): Promise<SavingsTarget> {
     const { data, error } = await supabase
       .from('savings_targets')
       .upsert({
@@ -142,7 +153,9 @@ export const dbService = {
       functional_area: String(p.functional_area || '').trim(),
       project_category: String(p.project_category || 'General').trim(),
       customer: String(p.customer || '').trim(),
-      business: String(p.business || '').trim()
+      business: String(p.business || '').trim(),
+      fiscal_year: String(p.fiscal_year || '').trim(),
+      fiscal_quarter: String(p.fiscal_quarter || '').trim()
     }));
 
     // Log the final payload before saving
@@ -187,7 +200,9 @@ export const dbService = {
       functional_area: String(p.functional_area || '').trim(),
       project_category: String(p.project_category || 'General').trim(),
       customer: String(p.customer || '').trim(),
-      business: String(p.business || '').trim()
+      business: String(p.business || '').trim(),
+      fiscal_year: String(p.fiscal_year || '').trim(),
+      fiscal_quarter: String(p.fiscal_quarter || '').trim()
     }));
 
     // Log the final payload before saving
@@ -199,5 +214,63 @@ export const dbService = {
 
     if (error) throw error;
     return { inserted: dbProjects.length, updated: 0 };
+  },
+
+  // --- FISCAL YEARS ---
+  async getFiscalYears(): Promise<FiscalYear[]> {
+    try {
+      const { data, error } = await supabase
+        .from('fiscal_years')
+        .select('*')
+        .order('fiscal_year', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn('Could not query fiscal_years table, using fallback.', e);
+      return [
+        { id: '1', fiscal_year: 'FY26', active: true, created_at: '' },
+        { id: '2', fiscal_year: 'FY27', active: false, created_at: '' },
+        { id: '3', fiscal_year: 'FY28', active: false, created_at: '' }
+      ];
+    }
+  },
+
+  async addFiscalYear(fy: string): Promise<FiscalYear> {
+    const { data, error } = await supabase
+      .from('fiscal_years')
+      .insert({ fiscal_year: fy, active: false })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async updateFiscalYearActive(id: string, active: boolean): Promise<void> {
+    if (active) {
+      // Set all others to active = false first
+      await supabase.from('fiscal_years').update({ active: false }).neq('id', id);
+    }
+    const { error } = await supabase
+      .from('fiscal_years')
+      .update({ active })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async renameFiscalYear(id: string, newFy: string): Promise<void> {
+    const { error } = await supabase
+      .from('fiscal_years')
+      .update({ fiscal_year: newFy })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async deleteFiscalYear(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('fiscal_years')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
   },
 };
