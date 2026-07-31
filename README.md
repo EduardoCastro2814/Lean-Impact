@@ -74,13 +74,24 @@ VITE_SUPABASE_ANON_KEY=your-anon-api-key-here
 The project contains a built-in automated deployment script using `gh-pages` and a GitHub Actions workflow.
 
 ### Method 1: Manual CLI Deployment
-Make sure your package.json homepage is set to your GitHub pages URL:
-`"homepage": "https://<your-username>.github.io/<your-repository-name>"`
-Then run the deploy command:
-```bash
-npm run deploy
-```
-This will compile the application (running `tsc && vite build`) and push the output directory `dist/` directly to your repository's `gh-pages` branch.
+
+Follow these three commands to build and deploy the application to GitHub Pages:
+
+1. **Install all packages and dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Verify local production build works**:
+   ```bash
+   npm run build
+   ```
+
+3. **Deploy to GitHub Pages**:
+   ```bash
+   npm run deploy
+   ```
+   *Note: Running `npm run deploy` will trigger `predeploy` (which builds the latest files via `npm run build` to output the `dist/` directory) and use `gh-pages` to publish the contents of `dist` folder to the `gh-pages` branch on GitHub.*
 
 ### Method 2: Automated GitHub Action CI/CD
 A deployment workflow is configured at:
