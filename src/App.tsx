@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
+import { checkConnection } from './lib/supabaseClient';
 
 // Views
 import { Dashboard } from './components/Dashboard';
@@ -11,6 +12,14 @@ import { Configuration } from './components/Configuration';
 
 export const App: React.FC = () => {
   const location = useLocation();
+
+  useEffect(() => {
+    const checkDb = async () => {
+      const connected = await checkConnection();
+      console.log(`[Lean Impact Startup] Supabase Connection Verified: ${connected}`);
+    };
+    checkDb();
+  }, []);
 
   const getPageTitle = (pathname: string) => {
     switch (pathname) {

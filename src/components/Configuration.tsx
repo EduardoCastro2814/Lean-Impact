@@ -6,11 +6,10 @@ import {
   CheckCircle, 
   AlertCircle,
   FileSpreadsheet,
-  Plus,
-  Trash
+  Plus
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { dbService, resetMockDb } from '../lib/supabaseClient';
+import { dbService, checkConnection } from '../lib/supabaseClient';
 import type { SavingsTarget } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
@@ -22,6 +21,17 @@ const formatCurrency = (val: number) => {
 };
 
 export const Configuration: React.FC = () => {
+  // Connection Status State
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'failed'>('checking');
+
+  useEffect(() => {
+    const verifyDb = async () => {
+      const isConnected = await checkConnection();
+      setConnectionStatus(isConnected ? 'connected' : 'failed');
+    };
+    verifyDb();
+  }, []);
+
   // Target States
   const [fiscalYear, setFiscalYear] = useState<number>(2026);
   const [quarter, setQuarter] = useState<string>('Q1');
@@ -306,16 +316,37 @@ export const Configuration: React.FC = () => {
     }, 1200);
   };
 
-  const handleResetToSeed = () => {
-    if (window.confirm('Are you sure you want to reset the database to the default seed data? All custom targets and imported projects will be cleared.')) {
-      resetMockDb();
-      loadTargets();
-      alert('Mock database successfully re-seeded.');
-    }
-  };
+
 
   return (
     <div className="view-container">
+      {/* Supabase Connection Status Banner */}
+      <div className="card" style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        padding: '16px', 
+        borderRadius: '8px', 
+        backgroundColor: connectionStatus === 'connected' ? '#DCFCE7' : connectionStatus === 'failed' ? '#FEE2E2' : '#F3F4F6',
+        borderColor: connectionStatus === 'connected' ? '#BBF7D0' : connectionStatus === 'failed' ? '#FCA5A5' : '#E5E7EB',
+        borderWidth: '1px',
+        borderStyle: 'solid',
+        marginBottom: '20px'
+      }}>
+        {connectionStatus === 'checking' && (
+          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#4B5563' }}>Checking database connection...</span>
+        )}
+        {connectionStatus === 'connected' && (
+          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#15803D' }}>
+            ✅ Connected to Supabase
+          </span>
+        )}
+        {connectionStatus === 'failed' && (
+          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#EF4444' }}>
+            ❌ Supabase connection failed
+          </span>
+        )}
+      </div>
+
       <div className="config-section-container">
         
         {/* Section 1: Savings Targets */}
@@ -538,14 +569,7 @@ export const Configuration: React.FC = () => {
               <span>{refreshLoading ? 'Recalculating...' : 'Recalculate Dashboard'}</span>
             </button>
 
-            <button 
-              onClick={handleResetToSeed}
-              className="btn-signout"
-              style={{ width: '220px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', borderColor: '#EF4444', color: '#EF4444', backgroundColor: '#FFFFFF' }}
-            >
-              <Trash size={16} />
-              <span>Reset Database to Demo Seed</span>
-            </button>
+
           </div>
 
           {refreshSuccess && (
