@@ -43,11 +43,20 @@ export const Configuration: React.FC = () => {
   const [approvedImportSummary, setApprovedImportSummary] = useState<any | null>(null);
   const [openImportSummary, setOpenImportSummary] = useState<any | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
-  const [importLoading, setImportLoading] = useState<string | null>(null); // 'approved' or 'open'
+  const [importLoading, setImportLoading] = useState<'approved' | 'open' | null>(null);
+  const [refreshLoading, setRefreshLoading] = useState<boolean>(false);
+  const [refreshSuccess, setRefreshSuccess] = useState<boolean>(false);
 
-  // Refresh State
-  const [refreshLoading, setRefreshLoading] = useState(false);
-  const [refreshSuccess, setRefreshSuccess] = useState(false);
+  const [pendingImport, setPendingImport] = useState<{
+    file: File;
+    type: 'approved' | 'open';
+    projects: any[];
+    detectedHeaders: string[];
+    mappedColumns: Record<string, string>;
+    rawRows: any[][];
+  } | null>(null);
+  const [debugMode, setDebugMode] = useState<boolean>(false);
+
 
   const loadTargets = async () => {
     try {
@@ -86,33 +95,281 @@ export const Configuration: React.FC = () => {
     }
   };
 
-  // Helper to normalize and match column headers dynamically
-  const findColumnIndex = (headers: string[], synonyms: string[]): string | null => {
-    for (const h of headers) {
-      const normalizedHeader = h.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-      for (const syn of synonyms) {
-        const normalizedSyn = syn.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (normalizedHeader === normalizedSyn || normalizedHeader.includes(normalizedSyn)) {
-          return h;
-        }
-      }
-    }
-    return null;
-  };
+  interface ParseResult {
+    projects: any[];
+    rawRows: any[][];
+    detectedHeaders: string[];
+    mappedColumns: Record<string, string>;
+  }
 
-  const parseExcelFile = (file: File): Promise<any[]> => {
+  const parseExcelFile = (file: File, type: 'approved' | 'open'): Promise<ParseResult> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
+          
+          // Match targeted sheet name first, fall back to first sheet
+          const targetName = type === 'approved' ? 'ApprovedKaizenProjectList' : 'KaizenOpenProjectList';
+          const matchedSheetName = workbook.SheetNames.find(name => name.toLowerCase() === targetName.toLowerCase());
+          const sheetName = matchedSheetName || workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-          resolve(jsonData);
-        } catch (err) {
-          reject(new Error('Failed to parse Excel file. Ensure it is a valid .xlsx or .xls file.'));
+          
+          if (!sheet) {
+            return reject(new Error(`Could not find sheet in workbook.`));
+          }
+
+          // Get 2D grid array of all rows in the sheet
+          const rawRows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' });
+          
+          if (rawRows.length === 0) {
+            return reject(new Error('The uploaded sheet is completely empty.'));
+          }
+
+          // Step 1: Detect the first projects table header row automatically
+          const synonymsToIdentify = [
+            'projectid', 'projecttitle', 'title', 'workshopname', 'workshop',
+            'leader', 'facilitator', 'status', 'functionalarea', 'projectapprovaldate',
+            'projectcreateddate', 'opcontribution', 'softsavings', 'inventoryarapsavings'
+          ];
+
+          let headerRowIndex = -1;
+          for (let i = 0; i < rawRows.length; i++) {
+            const rowCells = rawRows[i];
+            if (!rowCells || rowCells.length === 0) continue;
+            
+            let matchCount = 0;
+            rowCells.forEach(cell => {
+              if (cell === null || cell === undefined || cell === '') return;
+              const normalized = cell.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+              if (synonymsToIdentify.includes(normalized)) {
+                matchCount++;
+              }
+            });
+
+            // If a row has at least 3 matching synonyms, it is our project table header!
+            if (matchCount >= 3) {
+              headerRowIndex = i;
+              break;
+            }
+          }
+
+          if (headerRowIndex === -1) {
+            return reject(new Error('Could not automatically detect a valid project table. Ensure the file contains columns like "Project ID", "Project Title", "Facilitator", etc.'));
+          }
+
+          const headerRow = rawRows[headerRowIndex];
+          const detectedHeaders = headerRow.map(c => c ? c.toString().trim() : '');
+
+          // Step 2: Map columns based on synonyms
+          const idSyns = ['projectid', 'id', 'code', 'project_id', 'clave'];
+          const titleSyns = ['projecttitle', 'title', 'name', 'projectname', 'titulo', 'nombre'];
+          const workshopSyns = ['workshopname', 'workshop', 'event', 'taller', 'program', 'programa'];
+          const typeSyns = ['projecttype', 'type', 'tipo', 'project_type'];
+          const leaderSyns = ['leader', 'projectleader', 'lider', 'responsable'];
+          const facilitatorSyns = ['facilitator', 'facilitador', 'leanfacilitator', 'kaizenfacilitator'];
+          const statusSyns = ['status', 'state', 'estatus', 'estado', 'fase'];
+          const opSyns = ['opcontribution', 'operationalsavings', 'op_contribution', 'contribucionoperacional', 'operacional'];
+          const softSyns = ['softsavings', 'soft_savings', 'ahorrossoft', 'soft'];
+          const inventorySyns = ['inventoryarapsavings', 'inventorysavings', 'inventoryreduction', 'inventory_savings', 'inventario', 'ahorrosinventario'];
+          const fteSyns = ['fte', 'ftesavings', 'fte_savings', 'headcount'];
+          const oneTimeSyns = ['onetime', 'onetimesavings', 'one_time_savings', 'ahorrosonetime', 'eventual'];
+          const areaSyns = ['functionalarea', 'area', 'functional_area', 'departamento', 'seccion'];
+          const catSyns = ['category', 'projectcategory', 'project_category', 'categoria', 'pilar'];
+          const custSyns = ['customer', 'client', 'cliente', 'customername'];
+          const busSyns = ['business', 'businessunit', 'business_unit', 'negocio', 'segmento'];
+          const compDateSyns = ['completiondate', 'enddate', 'completion_date', 'fechaterminacion', 'fecha_fin'];
+
+          // Dates
+          const approvedDateSyns = ['projectapprovaldate', 'approvaldate', 'dateapproved', 'approval_date', 'fechaaprobacion'];
+          const openDateSyns = ['projectcreateddate', 'createddate', 'startdate', 'created_date', 'fechacreacion', 'fecha_inicio'];
+
+          // Mapped indices
+          const findColIdx = (syns: string[]): number => {
+            return detectedHeaders.findIndex(h => {
+              const normalized = h.toLowerCase().replace(/[^a-z0-9]/g, '');
+              return syns.some(syn => {
+                const normalizedSyn = syn.toLowerCase().replace(/[^a-z0-9]/g, '');
+                return normalized === normalizedSyn || normalized.includes(normalizedSyn);
+              });
+            });
+          };
+
+          const colIdxId = findColIdx(idSyns);
+          const colIdxTitle = findColIdx(titleSyns);
+          const colIdxWorkshop = findColIdx(workshopSyns);
+          const colIdxType = findColIdx(typeSyns);
+          const colIdxLeader = findColIdx(leaderSyns);
+          const colIdxFacilitator = findColIdx(facilitatorSyns);
+          const colIdxStatus = findColIdx(statusSyns);
+          const colIdxArea = findColIdx(areaSyns);
+          const colIdxDate = type === 'approved' ? findColIdx(approvedDateSyns) : findColIdx(openDateSyns);
+
+          // Check required validation
+          if (colIdxId === -1 || colIdxTitle === -1 || colIdxWorkshop === -1 || colIdxType === -1 || colIdxLeader === -1 || colIdxFacilitator === -1 || colIdxStatus === -1 || colIdxArea === -1 || colIdxDate === -1) {
+            const missing = [];
+            if (colIdxId === -1) missing.push('Project ID');
+            if (colIdxTitle === -1) missing.push('Project Title');
+            if (colIdxWorkshop === -1) missing.push('Workshop Name');
+            if (colIdxType === -1) missing.push('Project Type');
+            if (colIdxLeader === -1) missing.push('Leader');
+            if (colIdxFacilitator === -1) missing.push('Facilitator');
+            if (colIdxStatus === -1) missing.push('Status');
+            if (colIdxArea === -1) missing.push('Functional Area');
+            if (colIdxDate === -1) missing.push(type === 'approved' ? 'Project Approval Date' : 'Project Created Date');
+
+            return reject(new Error(`Missing required columns: ${missing.join(', ')}. Detected headers: [${detectedHeaders.join(', ')}].`));
+          }
+
+          // Optional column indices
+          const colIdxOp = findColIdx(opSyns);
+          const colIdxSoft = findColIdx(softSyns);
+          const colIdxInventory = findColIdx(inventorySyns);
+          const colIdxFte = findColIdx(fteSyns);
+          const colIdxOneTime = findColIdx(oneTimeSyns);
+          const colIdxCategory = findColIdx(catSyns);
+          const colIdxCustomer = findColIdx(custSyns);
+          const colIdxBusiness = findColIdx(busSyns);
+          const colIdxComp = findColIdx(compDateSyns);
+
+          const mappedColumns: Record<string, string> = {
+            'Project ID': detectedHeaders[colIdxId],
+            'Project Title': detectedHeaders[colIdxTitle],
+            'Workshop Name': detectedHeaders[colIdxWorkshop],
+            'Project Type': detectedHeaders[colIdxType],
+            'Leader': detectedHeaders[colIdxLeader],
+            'Facilitator': detectedHeaders[colIdxFacilitator],
+            'Status': detectedHeaders[colIdxStatus],
+            'Functional Area': detectedHeaders[colIdxArea],
+            [type === 'approved' ? 'Project Approval Date' : 'Project Created Date']: detectedHeaders[colIdxDate]
+          };
+
+          if (colIdxOp !== -1) mappedColumns['OP Contribution'] = detectedHeaders[colIdxOp];
+          if (colIdxSoft !== -1) mappedColumns['Soft Savings'] = detectedHeaders[colIdxSoft];
+          if (colIdxInventory !== -1) mappedColumns['Inventory ARAPSavings'] = detectedHeaders[colIdxInventory];
+          if (colIdxFte !== -1) mappedColumns['FTE Savings'] = detectedHeaders[colIdxFte];
+          if (colIdxOneTime !== -1) mappedColumns['One Time Savings'] = detectedHeaders[colIdxOneTime];
+          if (colIdxComp !== -1) mappedColumns['Project Completion Date'] = detectedHeaders[colIdxComp];
+
+          // Step 3: Iterate through rows below the header row
+          const projects: any[] = [];
+          for (let i = headerRowIndex + 1; i < rawRows.length; i++) {
+            const row = rawRows[i];
+            if (!row || row.length === 0) continue;
+
+            // Stop condition A: Check if row is completely empty
+            const isEmptyRow = row.every(cell => cell === null || cell === undefined || cell.toString().trim() === '');
+            if (isEmptyRow) {
+              if (projects.length > 0) break;
+              continue;
+            }
+
+            // Stop condition B: Check if we reached a repeated header block
+            const idCell = row[colIdxId] ? row[colIdxId].toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+            if (idCell === 'projectid') {
+              break; 
+            }
+
+            // Stop condition C: Ignore Before/After, Action Items, Action Plan, Before & After, etc.
+            const rowString = row.join(' ').toLowerCase();
+            if (
+              rowString.includes('before/after') || 
+              rowString.includes('before & after') || 
+              rowString.includes('action items') || 
+              rowString.includes('action plan') ||
+              rowString.includes('actionitem') ||
+              rowString.includes('beforeafter')
+            ) {
+              break; 
+            }
+
+            // Extract required columns
+            const pId = row[colIdxId] ? row[colIdxId].toString().trim() : '';
+            const pTitle = row[colIdxTitle] ? row[colIdxTitle].toString().trim() : '';
+
+            // Ignore empty ID rows or Totals
+            if (!pId || !pTitle || pId.toLowerCase() === 'total' || pId.toLowerCase().includes('total')) {
+              continue;
+            }
+
+            const pWorkshop = row[colIdxWorkshop] ? row[colIdxWorkshop].toString().trim() : '';
+            const pType = row[colIdxType] ? row[colIdxType].toString().trim() : 'Kaizen';
+            const pLeader = row[colIdxLeader] ? row[colIdxLeader].toString().trim() : '';
+            const pFacilitator = row[colIdxFacilitator] ? row[colIdxFacilitator].toString().trim() : '';
+            const pStatus = row[colIdxStatus] ? row[colIdxStatus].toString().trim() : 'Approved';
+            const pArea = row[colIdxArea] ? row[colIdxArea].toString().trim() : '';
+            const pDate = row[colIdxDate] ? row[colIdxDate].toString().trim() : '';
+
+            // Parsed numeric fields
+            const parseVal = (idx: number): number => {
+              if (idx === -1 || row[idx] === undefined || row[idx] === null || row[idx] === '') return 0;
+              const cleanNum = row[idx].toString().replace(/[^0-9.-]/g, '');
+              const val = parseFloat(cleanNum);
+              return isNaN(val) ? 0 : val;
+            };
+
+            const opVal = parseVal(colIdxOp);
+            const softVal = parseVal(colIdxSoft);
+            const invVal = parseVal(colIdxInventory);
+            const fteVal = parseVal(colIdxFte);
+            const otVal = parseVal(colIdxOneTime);
+
+            // Date parsing helpers
+            const parseDateString = (val: string): string => {
+              if (!val) return new Date().toISOString().split('T')[0];
+              const parsed = new Date(val);
+              return isNaN(parsed.getTime()) ? new Date().toISOString().split('T')[0] : parsed.toISOString().split('T')[0];
+            };
+
+            const parseDateStringOrNull = (val: string): string | null => {
+              if (!val) return null;
+              const parsed = new Date(val);
+              return isNaN(parsed.getTime()) ? null : parsed.toISOString().split('T')[0];
+            };
+
+            const projectMapped: any = {
+              project_id: pId,
+              project_title: pTitle,
+              workshop: pWorkshop,
+              project_type: pType,
+              leader: pLeader,
+              facilitator: pFacilitator,
+              status: pStatus,
+              functional_area: pArea,
+              op_contribution: opVal,
+              soft_savings: softVal,
+              inventory_savings: invVal,
+              fte_savings: fteVal,
+              one_time_savings: otVal
+            };
+
+            if (type === 'approved') {
+              projectMapped.approval_date = parseDateString(pDate);
+            } else {
+              projectMapped.created_date = parseDateString(pDate);
+            }
+
+            const compVal = colIdxComp !== -1 && row[colIdxComp] ? row[colIdxComp].toString().trim() : '';
+            projectMapped.completion_date = parseDateStringOrNull(compVal);
+
+            // Optional structural metadata
+            projectMapped.project_category = colIdxCategory !== -1 && row[colIdxCategory] ? row[colIdxCategory].toString().trim() : 'General';
+            projectMapped.customer = colIdxCustomer !== -1 && row[colIdxCustomer] ? row[colIdxCustomer].toString().trim() : '';
+            projectMapped.business = colIdxBusiness !== -1 && row[colIdxBusiness] ? row[colIdxBusiness].toString().trim() : '';
+
+            projects.push(projectMapped);
+          }
+
+          resolve({
+            projects,
+            rawRows,
+            detectedHeaders,
+            mappedColumns
+          });
+
+        } catch (err: any) {
+          reject(new Error(err.message || 'Failed to parse Excel file. Ensure it is a valid XLS or XLSX file.'));
         }
       };
       reader.onerror = () => reject(new Error('File reading error.'));
@@ -127,167 +384,16 @@ export const Configuration: React.FC = () => {
     else setOpenImportSummary(null);
 
     try {
-      const jsonData = await parseExcelFile(file);
-      if (jsonData.length === 0) {
-        throw new Error('The uploaded file contains no data.');
-      }
-
-      // Read headers from first row keys
-      const headers = Object.keys(jsonData[0]);
-
-      // Synonyms for mapping
-      const idSyns = ['projectid', 'id', 'code', 'project_id', 'clave'];
-      const titleSyns = ['title', 'projecttitle', 'name', 'projectname', 'titulo', 'nombre'];
-      const workshopSyns = ['workshop', 'event', 'taller', 'program', 'programa'];
-      const typeSyns = ['type', 'projecttype', 'tipo', 'project_type'];
-      const leaderSyns = ['leader', 'projectleader', 'lider', 'responsable'];
-      const facilitatorSyns = ['facilitator', 'facilitador', 'leanfacilitator', 'kaizenfacilitator'];
-      const statusSyns = ['status', 'state', 'estatus', 'estado', 'fase'];
-      const opSyns = ['opcontribution', 'operationalsavings', 'op_contribution', 'contribucionoperacional', 'operacional'];
-      const softSyns = ['softsavings', 'soft_savings', 'ahorrossoft', 'soft'];
-      const inventorySyns = ['inventorysavings', 'inventoryreduction', 'inventory_savings', 'inventario', 'ahorrosinventario'];
-      const fteSyns = ['fte', 'ftesavings', 'fte_savings', 'headcount'];
-      const oneTimeSyns = ['onetime', 'onetimesavings', 'one_time_savings', 'ahorrosonetime', 'eventual'];
-      const areaSyns = ['area', 'functionalarea', 'functional_area', 'departamento', 'seccion'];
-      const catSyns = ['category', 'projectcategory', 'project_category', 'categoria', 'pilar'];
-      const custSyns = ['customer', 'client', 'cliente', 'customername'];
-      const busSyns = ['business', 'businessunit', 'business_unit', 'negocio', 'segmento'];
-
-      // Specific keys: date mapping
-      const approvedDateSyns = ['approvaldate', 'dateapproved', 'approval_date', 'fechaaprobacion'];
-      const openDateSyns = ['createddate', 'startdate', 'created_date', 'fechacreacion', 'fecha_inicio'];
-      const completionDateSyns = ['completiondate', 'enddate', 'completion_date', 'fechaterminacion', 'fecha_fin'];
-
-      // Validate required columns
-      const keyId = findColumnIndex(headers, idSyns);
-      const keyTitle = findColumnIndex(headers, titleSyns);
-      const keyWorkshop = findColumnIndex(headers, workshopSyns);
-      const keyType = findColumnIndex(headers, typeSyns);
-      const keyLeader = findColumnIndex(headers, leaderSyns);
-      const keyFacilitator = findColumnIndex(headers, facilitatorSyns);
-      const keyStatus = findColumnIndex(headers, statusSyns);
-      const keyArea = findColumnIndex(headers, areaSyns);
-      const keyDate = type === 'approved' 
-        ? findColumnIndex(headers, approvedDateSyns) 
-        : findColumnIndex(headers, openDateSyns);
-
-      // Check validation
-      if (!keyId || !keyTitle || !keyWorkshop || !keyType || !keyLeader || !keyFacilitator || !keyStatus || !keyArea || !keyDate) {
-        const missing = [];
-        if (!keyId) missing.push('Project ID');
-        if (!keyTitle) missing.push('Project Title');
-        if (!keyWorkshop) missing.push('Workshop');
-        if (!keyType) missing.push('Project Type');
-        if (!keyLeader) missing.push('Leader');
-        if (!keyFacilitator) missing.push('Facilitator');
-        if (!keyStatus) missing.push('Status');
-        if (!keyArea) missing.push('Functional Area');
-        if (!keyDate) missing.push(type === 'approved' ? 'Approval Date' : 'Created Date');
-
-        throw new Error(`Invalid file headers. Could not identify columns for: ${missing.join(', ')}.`);
-      }
-
-      // Retrieve optional columns
-      const keyOp = findColumnIndex(headers, opSyns);
-      const keySoft = findColumnIndex(headers, softSyns);
-      const keyInventory = findColumnIndex(headers, inventorySyns);
-      const keyFte = findColumnIndex(headers, fteSyns);
-      const keyOneTime = findColumnIndex(headers, oneTimeSyns);
-      const keyCategory = findColumnIndex(headers, catSyns);
-      const keyCustomer = findColumnIndex(headers, custSyns);
-      const keyBusiness = findColumnIndex(headers, busSyns);
-      const keyCompDate = findColumnIndex(headers, completionDateSyns);
-
-      // Map rows
-      const projectsMapped = jsonData.map((row: any) => {
-        const opVal = keyOp ? parseFloat(row[keyOp]) : 0;
-        const softVal = keySoft ? parseFloat(row[keySoft]) : 0;
-        const invVal = keyInventory ? parseFloat(row[keyInventory]) : 0;
-        const fteVal = keyFte ? parseFloat(row[keyFte]) : 0;
-        const otVal = keyOneTime ? parseFloat(row[keyOneTime]) : 0;
-
-        const dateRaw = row[keyDate];
-        // Format Date to YYYY-MM-DD
-        let formattedDate = new Date().toISOString().split('T')[0];
-        if (dateRaw) {
-          const parsedD = new Date(dateRaw);
-          if (!isNaN(parsedD.getTime())) {
-            formattedDate = parsedD.toISOString().split('T')[0];
-          }
-        }
-
-        let formattedCompDate: string | null = null;
-        if (keyCompDate && row[keyCompDate]) {
-          const parsedD = new Date(row[keyCompDate]);
-          if (!isNaN(parsedD.getTime())) {
-            formattedCompDate = parsedD.toISOString().split('T')[0];
-          }
-        }
-
-        const baseProject = {
-          project_id: String(row[keyId]).trim(),
-          project_title: String(row[keyTitle]).trim(),
-          workshop: String(row[keyWorkshop]).trim(),
-          project_type: String(row[keyType]).trim(),
-          leader: String(row[keyLeader]).trim(),
-          facilitator: String(row[keyFacilitator]).trim(),
-          status: String(row[keyStatus]).trim(),
-          op_contribution: isNaN(opVal) ? 0 : opVal,
-          soft_savings: isNaN(softVal) ? 0 : softVal,
-          inventory_savings: isNaN(invVal) ? 0 : invVal,
-          fte_savings: isNaN(fteVal) ? 0 : fteVal,
-          one_time_savings: isNaN(otVal) ? 0 : otVal,
-          functional_area: String(row[keyArea]).trim(),
-          project_category: keyCategory ? String(row[keyCategory]).trim() : 'N/A',
-          customer: keyCustomer ? String(row[keyCustomer]).trim() : 'N/A',
-          business: keyBusiness ? String(row[keyBusiness]).trim() : 'N/A',
-          completion_date: formattedCompDate,
-        };
-
-        if (type === 'approved') {
-          return {
-            ...baseProject,
-            approval_date: formattedDate,
-          };
-        } else {
-          return {
-            ...baseProject,
-            created_date: formattedDate,
-          };
-        }
+      const result = await parseExcelFile(file, type);
+      
+      setPendingImport({
+        file,
+        type,
+        projects: result.projects,
+        detectedHeaders: result.detectedHeaders,
+        mappedColumns: result.mappedColumns,
+        rawRows: result.rawRows
       });
-
-      // Insert/Upsert via DB service
-      let summary;
-      if (type === 'approved') {
-        summary = await dbService.importApprovedProjects(projectsMapped as any);
-        setApprovedImportSummary({
-          fileName: file.name,
-          totalRows: jsonData.length,
-          inserted: summary.inserted,
-          updated: summary.updated,
-          mappedColumns: {
-            'Project ID': keyId,
-            'Title': keyTitle,
-            'Facilitator': keyFacilitator,
-            'Approval Date': keyDate
-          }
-        });
-      } else {
-        summary = await dbService.importOpenProjects(projectsMapped as any);
-        setOpenImportSummary({
-          fileName: file.name,
-          totalRows: jsonData.length,
-          inserted: summary.inserted,
-          updated: summary.updated,
-          mappedColumns: {
-            'Project ID': keyId,
-            'Title': keyTitle,
-            'Facilitator': keyFacilitator,
-            'Created Date': keyDate
-          }
-        });
-      }
     } catch (err: any) {
       console.error(err);
       setImportError(err.message || 'Error processing Excel import.');
@@ -296,11 +402,52 @@ export const Configuration: React.FC = () => {
     }
   };
 
+  const handleConfirmImport = async () => {
+    if (!pendingImport) return;
+    const { type, projects, file } = pendingImport;
+    setImportLoading(type);
+    setImportError(null);
+
+    try {
+      let summary;
+      if (type === 'approved') {
+        summary = await dbService.importApprovedProjects(projects as any);
+        setApprovedImportSummary({
+          fileName: file.name,
+          totalRows: projects.length,
+          inserted: summary.inserted,
+          updated: summary.updated
+        });
+      } else {
+        summary = await dbService.importOpenProjects(projects as any);
+        setOpenImportSummary({
+          fileName: file.name,
+          totalRows: projects.length,
+          inserted: summary.inserted,
+          updated: summary.updated
+        });
+      }
+      setPendingImport(null);
+      window.dispatchEvent(new Event('lean-impact-db-changed'));
+    } catch (err: any) {
+      console.error(err);
+      setImportError(err.message || 'Error importing projects to database.');
+    } finally {
+      setImportLoading(null);
+    }
+  };
+
+  const handleCancelImport = () => {
+    setPendingImport(null);
+    setImportError(null);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'approved' | 'open') => {
     const files = e.target.files;
     if (files && files.length > 0) {
       processImport(files[0], type);
     }
+    e.target.value = '';
   };
 
   // Recalculate Dashboard action
@@ -434,6 +581,117 @@ export const Configuration: React.FC = () => {
         </div>
 
         {/* Section 2 & 3: File Import Panels */}
+        {pendingImport && (
+          <div className="card" style={{ borderLeft: '4px solid #16A34A', backgroundColor: '#F0FDF4', padding: '24px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#14532D', margin: 0 }}>
+                  <FileSpreadsheet size={24} style={{ color: '#16A34A' }} />
+                  Excel Import Preview & Mappings (Pending Confirmation)
+                </span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#16A34A', backgroundColor: '#DCFCE7', padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                  {pendingImport.type === 'approved' ? 'Approved Projects List' : 'Open Projects List'}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ color: '#374151', fontWeight: 600 }}>File Name:</span>
+                  <span style={{ color: '#111827', wordBreak: 'break-all' }}>{pendingImport.file.name}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ color: '#374151', fontWeight: 600 }}>Project Records Mapped:</span>
+                  <span style={{ color: '#111827', fontSize: '1rem', fontWeight: 'bold' }}>{pendingImport.projects.length} rows</span>
+                </div>
+              </div>
+
+              {/* Detected Headers */}
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
+                  All Detected Column Headers in File (Troubleshooting Preview):
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '100px', overflowY: 'auto', border: '1px solid #D1D5DB', borderRadius: '6px', padding: '8px', backgroundColor: '#FFFFFF' }}>
+                  {pendingImport.detectedHeaders.map((header, idx) => (
+                    <span key={idx} style={{ fontSize: '0.7rem', backgroundColor: '#F3F4F6', color: '#374151', padding: '2px 6px', borderRadius: '4px', border: '1px solid #E5E7EB' }}>
+                      {header || `(Empty Column ${idx + 1})`}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mapped Columns Mapping Summary */}
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
+                  Mapped Columns:
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px', border: '1px solid #D1D5DB', borderRadius: '6px', padding: '10px', backgroundColor: '#FFFFFF' }}>
+                  {Object.entries(pendingImport.mappedColumns).map(([field, mappedHeader]) => (
+                    <div key={field} style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #E5E7EB', paddingBottom: '4px' }}>
+                      <span style={{ color: '#4B5563', fontWeight: 500 }}>{field}:</span>
+                      <strong style={{ color: '#15803D' }}>{mappedHeader}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Debug Mode Raw Row Preview (10 Rows) */}
+              {debugMode && (
+                <div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
+                    🐛 Debug Mode: First 10 Raw Sheet Rows (Before Validation)
+                  </span>
+                  <div style={{ overflowX: 'auto', border: '1px solid #D1D5DB', borderRadius: '6px', maxHeight: '200px', backgroundColor: '#FFFFFF' }}>
+                    <table style={{ minWidth: '100%', borderCollapse: 'collapse', fontSize: '0.7rem', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#F3F4F6' }}>
+                          {pendingImport.rawRows[0]?.map((_, colIdx) => (
+                            <th key={colIdx} style={{ padding: '6px 8px', borderBottom: '1px solid #D1D5DB', color: '#4B5563', fontWeight: 'bold' }}>
+                              Col {colIdx + 1}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingImport.rawRows.slice(0, 10).map((row, rowIdx) => (
+                          <tr key={rowIdx} style={{ borderBottom: '1px solid #F3F4F6', backgroundColor: rowIdx % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }}>
+                            {row.map((cell, cellIdx) => (
+                              <td key={cellIdx} style={{ padding: '6px 8px', whiteSpace: 'nowrap', color: '#1F2937' }}>
+                                {cell !== null && cell !== undefined ? cell.toString() : ''}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <button 
+                  onClick={handleConfirmImport} 
+                  disabled={importLoading !== null}
+                  className="btn-submit"
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
+                >
+                  <CheckCircle size={16} />
+                  <span>Confirm and Import to Database</span>
+                </button>
+                <button 
+                  onClick={handleCancelImport}
+                  disabled={importLoading !== null}
+                  className="btn-signout"
+                  style={{ width: '150px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', borderColor: '#DC2626', color: '#DC2626', backgroundColor: '#FFFFFF' }}
+                >
+                  <span>Cancel</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
         <div className="config-row-grid">
           
           {/* Section 2: Approved Projects Import */}
@@ -445,10 +703,21 @@ export const Configuration: React.FC = () => {
               </span>
             </div>
 
-            <p style={{ fontSize: '0.8rem', color: '#6B7280', marginBottom: '16px' }}>
-              Upload the Excel tracker (Sheet: <strong>ApprovedKaizenProjectList</strong>).
-              Headers like <i>Project ID, Title, Facilitator, Workshop, and Approval Date</i> will be mapped.
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+              <p style={{ fontSize: '0.8rem', color: '#6B7280', margin: 0 }}>
+                Upload the Excel tracker (Sheet: <strong>ApprovedKaizenProjectList</strong>).
+                Headers like <i>Project ID, Title, Facilitator, Workshop, and Approval Date</i> will be mapped.
+              </p>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#4B5563', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                <input 
+                  type="checkbox" 
+                  checked={debugMode} 
+                  onChange={(e) => setDebugMode(e.target.checked)} 
+                  style={{ width: '14px', height: '14px' }}
+                />
+                <span>Debug Mode</span>
+              </label>
+            </div>
 
             <label className="import-upload-zone">
               <Upload className="import-upload-zone-icon" size={32} />
@@ -495,10 +764,21 @@ export const Configuration: React.FC = () => {
               </span>
             </div>
 
-            <p style={{ fontSize: '0.8rem', color: '#6B7280', marginBottom: '16px' }}>
-              Upload the active pipeline Excel sheet (Sheet: <strong>KaizenOpenProjectList</strong>).
-              Columns like <i>Project ID, Title, Facilitator, Workshop, and Created Date</i> are required.
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+              <p style={{ fontSize: '0.8rem', color: '#6B7280', margin: 0 }}>
+                Upload the active pipeline Excel sheet (Sheet: <strong>KaizenOpenProjectList</strong>).
+                Columns like <i>Project ID, Title, Facilitator, Workshop, and Created Date</i> are required.
+              </p>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#4B5563', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                <input 
+                  type="checkbox" 
+                  checked={debugMode} 
+                  onChange={(e) => setDebugMode(e.target.checked)} 
+                  style={{ width: '14px', height: '14px' }}
+                />
+                <span>Debug Mode</span>
+              </label>
+            </div>
 
             <label className="import-upload-zone" style={{ borderStyle: 'dashed' }}>
               <Upload style={{ color: '#3B82F6' }} size={32} />
