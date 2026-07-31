@@ -78,6 +78,10 @@ export const Configuration: React.FC = () => {
     detectedHeaders: string[];
     mappedColumns: Record<string, string>;
     rawRows: any[][];
+    totalRowsRead: number;
+    uniqueCount: number;
+    duplicateCount: number;
+    duplicateIds: string[];
   } | null>(null);
   const [debugMode, setDebugMode] = useState<boolean>(false);
 
@@ -124,6 +128,10 @@ export const Configuration: React.FC = () => {
     rawRows: any[][];
     detectedHeaders: string[];
     mappedColumns: Record<string, string>;
+    totalRowsRead: number;
+    uniqueCount: number;
+    duplicateCount: number;
+    duplicateIds: string[];
   }
 
   const parseExcelFile = (file: File, type: 'approved' | 'open'): Promise<ParseResult> => {
@@ -384,11 +392,35 @@ export const Configuration: React.FC = () => {
             projects.push(projectMapped);
           }
 
+          // Deduplicate projects by project_id
+          const seenIds = new Set<string>();
+          const uniqueProjects: any[] = [];
+          const duplicateIds: string[] = [];
+
+          projects.forEach(p => {
+            const id = p.project_id;
+            if (seenIds.has(id)) {
+              duplicateIds.push(id);
+            } else {
+              seenIds.add(id);
+              uniqueProjects.push(p);
+            }
+          });
+
+          // Log duplicate project IDs detected
+          if (duplicateIds.length > 0) {
+            console.warn('[Excel Import] Duplicate project IDs detected and removed from import batch:', duplicateIds);
+          }
+
           resolve({
-            projects,
+            projects: uniqueProjects,
             rawRows,
             detectedHeaders,
-            mappedColumns
+            mappedColumns,
+            totalRowsRead: projects.length,
+            uniqueCount: uniqueProjects.length,
+            duplicateCount: duplicateIds.length,
+            duplicateIds
           });
 
         } catch (err: any) {
@@ -415,7 +447,11 @@ export const Configuration: React.FC = () => {
         projects: result.projects,
         detectedHeaders: result.detectedHeaders,
         mappedColumns: result.mappedColumns,
-        rawRows: result.rawRows
+        rawRows: result.rawRows,
+        totalRowsRead: result.totalRowsRead,
+        uniqueCount: result.uniqueCount,
+        duplicateCount: result.duplicateCount,
+        duplicateIds: result.duplicateIds
       });
     } catch (err: any) {
       console.error(err);
@@ -617,16 +653,39 @@ export const Configuration: React.FC = () => {
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '0.85rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', fontSize: '0.85rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span style={{ color: '#374151', fontWeight: 600 }}>File Name:</span>
                   <span style={{ color: '#111827', wordBreak: 'break-all' }}>{pendingImport.file.name}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ color: '#374151', fontWeight: 600 }}>Project Records Mapped:</span>
-                  <span style={{ color: '#111827', fontSize: '1rem', fontWeight: 'bold' }}>{pendingImport.projects.length} rows</span>
+                  <span style={{ color: '#374151', fontWeight: 600 }}>Total Rows Read:</span>
+                  <span style={{ color: '#111827', fontSize: '1rem', fontWeight: 'bold' }}>{pendingImport.totalRowsRead} rows</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ color: '#374151', fontWeight: 600 }}>Unique Project IDs:</span>
+                  <span style={{ color: '#15803D', fontSize: '1rem', fontWeight: 'bold' }}>{pendingImport.uniqueCount} rows</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ color: '#374151', fontWeight: 600 }}>Duplicate IDs Removed:</span>
+                  <span style={{ color: pendingImport.duplicateCount > 0 ? '#DC2626' : '#4B5563', fontSize: '1rem', fontWeight: 'bold' }}>
+                    {pendingImport.duplicateCount} duplicates
+                  </span>
                 </div>
               </div>
+
+              {pendingImport.duplicateCount > 0 && (
+                <div style={{ padding: '12px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '6px', fontSize: '0.75rem', color: '#991B1B' }}>
+                  <strong style={{ display: 'block', marginBottom: '4px' }}>⚠️ Duplicate Project IDs detected & removed from import batch:</strong>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '80px', overflowY: 'auto' }}>
+                    {pendingImport.duplicateIds.map((id, idx) => (
+                      <span key={idx} style={{ backgroundColor: '#FEE2E2', border: '1px solid #FCA5A5', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>
+                        {id}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Detected Headers */}
               <div>
