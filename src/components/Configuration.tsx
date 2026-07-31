@@ -207,7 +207,10 @@ export const Configuration: React.FC = () => {
           const colIdxDate = type === 'approved' ? findColIdx(approvedDateSyns) : findColIdx(openDateSyns);
 
           // Check required validation
-          if (colIdxId === -1 || colIdxTitle === -1 || colIdxWorkshop === -1 || colIdxType === -1 || colIdxLeader === -1 || colIdxFacilitator === -1 || colIdxStatus === -1 || colIdxArea === -1 || colIdxDate === -1) {
+          const isStatusRequired = type === 'open';
+          const isMissingStatus = isStatusRequired && colIdxStatus === -1;
+
+          if (colIdxId === -1 || colIdxTitle === -1 || colIdxWorkshop === -1 || colIdxType === -1 || colIdxLeader === -1 || colIdxFacilitator === -1 || isMissingStatus || colIdxArea === -1 || colIdxDate === -1) {
             const missing = [];
             if (colIdxId === -1) missing.push('Project ID');
             if (colIdxTitle === -1) missing.push('Project Title');
@@ -215,7 +218,7 @@ export const Configuration: React.FC = () => {
             if (colIdxType === -1) missing.push('Project Type');
             if (colIdxLeader === -1) missing.push('Leader');
             if (colIdxFacilitator === -1) missing.push('Facilitator');
-            if (colIdxStatus === -1) missing.push('Status');
+            if (isMissingStatus) missing.push('Status');
             if (colIdxArea === -1) missing.push('Functional Area');
             if (colIdxDate === -1) missing.push(type === 'approved' ? 'Project Approval Date' : 'Project Created Date');
 
@@ -240,10 +243,15 @@ export const Configuration: React.FC = () => {
             'Project Type': detectedHeaders[colIdxType],
             'Leader': detectedHeaders[colIdxLeader],
             'Facilitator': detectedHeaders[colIdxFacilitator],
-            'Status': detectedHeaders[colIdxStatus],
             'Functional Area': detectedHeaders[colIdxArea],
             [type === 'approved' ? 'Project Approval Date' : 'Project Created Date']: detectedHeaders[colIdxDate]
           };
+
+          if (colIdxStatus !== -1) {
+            mappedColumns['Status'] = detectedHeaders[colIdxStatus];
+          } else if (type === 'approved') {
+            mappedColumns['Status'] = 'Approved (Defaulted)';
+          }
 
           if (colIdxOp !== -1) mappedColumns['OP Contribution'] = detectedHeaders[colIdxOp];
           if (colIdxSoft !== -1) mappedColumns['Soft Savings'] = detectedHeaders[colIdxSoft];
@@ -297,7 +305,7 @@ export const Configuration: React.FC = () => {
             const pType = row[colIdxType] ? row[colIdxType].toString().trim() : 'Kaizen';
             const pLeader = row[colIdxLeader] ? row[colIdxLeader].toString().trim() : '';
             const pFacilitator = row[colIdxFacilitator] ? row[colIdxFacilitator].toString().trim() : '';
-            const pStatus = row[colIdxStatus] ? row[colIdxStatus].toString().trim() : 'Approved';
+            const pStatus = colIdxStatus !== -1 && row[colIdxStatus] ? row[colIdxStatus].toString().trim() : (type === 'approved' ? 'Approved' : 'Open');
             const pArea = row[colIdxArea] ? row[colIdxArea].toString().trim() : '';
             const pDate = row[colIdxDate] ? row[colIdxDate].toString().trim() : '';
 
