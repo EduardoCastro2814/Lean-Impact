@@ -1,0 +1,52 @@
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  Briefcase, 
+  TrendingUp, 
+  Users, 
+  Settings 
+} from 'lucide-react';
+import logo from '../assets/logo.png';
+
+export const Sidebar: React.FC = () => {
+  const menuItems = [
+    { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
+    { name: 'Projects', path: '/projects', icon: <Briefcase size={20} /> },
+    { name: 'Forecast', path: '/forecast', icon: <TrendingUp size={20} /> },
+    { name: 'Facilitators', path: '/facilitators', icon: <Users size={20} /> },
+    { name: 'Configuration', path: '/configuration', icon: <Settings size={20} /> },
+  ];
+
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-logo">
+        <img src={logo} alt="Lean Impact Logo" className="sidebar-logo-img" />
+        <span className="sidebar-logo-text">Lean Impact</span>
+      </div>
+      
+      <nav style={{ flexGrow: 1 }}>
+        <ul className="sidebar-menu">
+          {menuItems.map((item) => (
+            <li key={item.name}>
+              <NavLink 
+                to={item.path} 
+                className={({ isActive }: { isActive: boolean }) => 
+                  isActive ? 'sidebar-item-link active' : 'sidebar-item-link'
+                }
+                end={item.path === '/'}
+              >
+                {item.icon}
+                <span>{item.name}</span>
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div className="sidebar-footer" style={{ borderTop: '1px solid var(--color-border)', padding: '16px', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+        Lean Impact v1.1.0
+      </div>
+    </aside>
+  );
+};
