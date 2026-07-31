@@ -21,7 +21,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import html2canvas from 'html2canvas';
-import { dbService } from '../lib/supabaseClient';
+import { dbService, getFyDisplayLabel } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen, SavingsTarget } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
@@ -252,20 +252,20 @@ export const Dashboard: React.FC = () => {
       <div className="filters-panel">
         <div style={{ display: 'flex', gap: '12px', flexGrow: 0 }}>
           <div className="filter-group" style={{ minWidth: '160px' }}>
-            <label className="filter-label">Select Fiscal Year</label>
+            <label className="filter-label">Select FY</label>
             <select 
               className="filter-select"
               value={fiscalYear} 
               onChange={(e) => setFiscalYear(e.target.value)}
             >
               {fiscalYears.map(fy => (
-                <option key={fy.id} value={fy.fiscal_year}>{fy.fiscal_year} Fiscal Year</option>
+                <option key={fy.id} value={fy.fiscal_year}>{getFyDisplayLabel(fy.fiscal_year)}</option>
               ))}
             </select>
           </div>
 
           <div className="filter-group" style={{ minWidth: '160px' }}>
-            <label className="filter-label">Select Fiscal Quarter</label>
+            <label className="filter-label">Select Quarter</label>
             <select 
               className="filter-select"
               value={quarter} 
@@ -690,11 +690,11 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Chart 3: Savings by Fiscal Quarter */}
+          {/* Chart 3: Savings by Quarter */}
           <div className="card" id="quarterly-savings-card">
             <div className="card-header-row">
-              <span className="card-title">Savings by Fiscal Quarter ({fiscalYear})</span>
-              <button onClick={() => exportChart('quarterly-savings-card', `Savings_by_Fiscal_Quarter_${fiscalYear}`)} className="btn-export">
+              <span className="card-title">Savings by Quarter ({fiscalYear})</span>
+              <button onClick={() => exportChart('quarterly-savings-card', `Savings_by_Quarter_${fiscalYear}`)} className="btn-export">
                 <Download size={14} />
               </button>
             </div>
@@ -714,11 +714,11 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Chart 4: Savings by Fiscal Year */}
+          {/* Chart 4: Savings by FY */}
           <div className="card" id="yearly-savings-card">
             <div className="card-header-row">
-              <span className="card-title">Savings by Fiscal Year Comparison</span>
-              <button onClick={() => exportChart('yearly-savings-card', `Savings_by_Fiscal_Year`)} className="btn-export">
+              <span className="card-title">Savings by FY Comparison</span>
+              <button onClick={() => exportChart('yearly-savings-card', `Savings_by_FY`)} className="btn-export">
                 <Download size={14} />
               </button>
             </div>

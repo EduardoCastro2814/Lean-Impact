@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-import { dbService } from '../lib/supabaseClient';
+import { dbService, getFyDisplayLabel } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
@@ -37,7 +37,8 @@ interface FacilitatorRow {
 }
 
 export const Facilitators: React.FC = () => {
-  const [fiscalYear, setFiscalYear] = useState<number>(2026);
+  const [fiscalYear, setFiscalYear] = useState<string>('FY26');
+  const [fiscalYears, setFiscalYears] = useState<any[]>([]);
   const [approvedProjects, setApprovedProjects] = useState<ProjectApproved[]>([]);
   const [openProjects, setOpenProjects] = useState<ProjectOpen[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,12 +46,21 @@ export const Facilitators: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [approved, open] = await Promise.all([
+      const [approved, open, fyList] = await Promise.all([
         dbService.getProjectsApproved(),
-        dbService.getProjectsOpen()
+        dbService.getProjectsOpen(),
+        dbService.getFiscalYears()
       ]);
       setApprovedProjects(approved);
       setOpenProjects(open);
+      setFiscalYears(fyList);
+
+      const activeFy = fyList.find(fy => fy.active);
+      if (activeFy) {
+        setFiscalYear(activeFy.fiscal_year);
+      } else if (fyList.length > 0) {
+        setFiscalYear(fyList[0].fiscal_year);
+      }
     } catch (e) {
       console.error('Error loading facilitators data', e);
     } finally {
@@ -66,21 +76,13 @@ export const Facilitators: React.FC = () => {
     };
   }, []);
 
-  const getProjectYear = (dateStr: string | null): number => {
-    if (!dateStr) return 0;
-    return new Date(dateStr).getFullYear();
-  };
-
   // Process data to generate rankings
   const getFacilitatorRankings = (): FacilitatorRow[] => {
     const facilitatorsMap: Record<string, Omit<FacilitatorRow, 'facilitator'>> = {};
 
     // Filter by fiscal year
-    const approvedFiltered = approvedProjects.filter(p => getProjectYear(p.approval_date) === fiscalYear);
-    const openFiltered = openProjects.filter(p => {
-      const year = p.completion_date ? getProjectYear(p.completion_date) : getProjectYear(p.created_date);
-      return year === fiscalYear;
-    });
+    const approvedFiltered = approvedProjects.filter(p => p.fiscal_year === fiscalYear);
+    const openFiltered = openProjects.filter(p => p.fiscal_year === fiscalYear);
 
     // Aggregate Approved
     approvedFiltered.forEach(p => {
@@ -182,14 +184,15 @@ export const Facilitators: React.FC = () => {
       {/* Top Filter and Actions Row */}
       <div className="filters-panel">
         <div className="filter-group" style={{ minWidth: '140px', flexGrow: 0 }}>
-          <label className="filter-label">Select Fiscal Year</label>
+          <label className="filter-label">Select FY</label>
           <select 
             className="filter-select"
             value={fiscalYear} 
-            onChange={(e) => setFiscalYear(Number(e.target.value))}
+            onChange={(e) => setFiscalYear(e.target.value)}
           >
-            <option value={2026}>2026 Fiscal Year</option>
-            <option value={2027}>2027 Fiscal Year</option>
+            {fiscalYears.map(fy => (
+              <option key={fy.id} value={fy.fiscal_year}>{getFyDisplayLabel(fy.fiscal_year)}</option>
+            ))}
           </select>
         </div>
         <div style={{ flexGrow: 1 }} />

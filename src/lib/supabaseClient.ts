@@ -91,6 +91,24 @@ export const checkConnection = async (): Promise<boolean> => {
   }
 };
 
+export const getFyDisplayLabel = (fy: string | null | undefined): string => {
+  if (!fy) return '';
+  const cleanFy = fy.trim().toUpperCase();
+  if (cleanFy === 'FY26') return 'FY26 (Apr 2025 - Mar 2026)';
+  if (cleanFy === 'FY27') return 'FY27 (Apr 2026 - Mar 2027)';
+  if (cleanFy === 'FY28') return 'FY28 (Apr 2027 - Mar 2028)';
+  if (cleanFy === 'FY29') return 'FY29 (Apr 2028 - Mar 2029)';
+  
+  const match = cleanFy.match(/^FY(\d{2})$/);
+  if (match) {
+    const yy = parseInt(match[1]);
+    const startYear = 2000 + yy - 1;
+    const endYear = 2000 + yy;
+    return `${cleanFy} (Apr ${startYear} - Mar ${endYear})`;
+  }
+  return cleanFy;
+};
+
 // ----------------------------------------------------
 // DATABASE API INTERFACE (Supabase ONLY)
 // ----------------------------------------------------
@@ -271,6 +289,28 @@ export const dbService = {
       .from('fiscal_years')
       .delete()
       .eq('id', id);
+    if (error) throw error;
+  },
+
+  async checkFiscalYearData(fiscalYear: string): Promise<boolean> {
+    const [targets, approved, open] = await Promise.all([
+      supabase.from('savings_targets').select('id').eq('fiscal_year', fiscalYear).limit(1),
+      supabase.from('projects_approved').select('id').eq('fiscal_year', fiscalYear).limit(1),
+      supabase.from('projects_open').select('id').eq('fiscal_year', fiscalYear).limit(1)
+    ]);
+    const hasTargets = (targets.data && targets.data.length > 0) || false;
+    const hasApproved = (approved.data && approved.data.length > 0) || false;
+    const hasOpen = (open.data && open.data.length > 0) || false;
+    return hasTargets || hasApproved || hasOpen;
+  },
+
+  async deleteFiscalYearCascade(id: string, fiscalYear: string): Promise<void> {
+    await Promise.all([
+      supabase.from('savings_targets').delete().eq('fiscal_year', fiscalYear),
+      supabase.from('projects_approved').delete().eq('fiscal_year', fiscalYear),
+      supabase.from('projects_open').delete().eq('fiscal_year', fiscalYear)
+    ]);
+    const { error } = await supabase.from('fiscal_years').delete().eq('id', id);
     if (error) throw error;
   },
 };

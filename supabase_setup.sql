@@ -17,7 +17,7 @@ $$ LANGUAGE plpgsql;
 -- 1. TABLE: SAVINGS_TARGETS
 CREATE TABLE IF NOT EXISTS savings_targets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    fiscal_year INTEGER NOT NULL,
+    fiscal_year VARCHAR(50) NOT NULL,
     quarter VARCHAR(10) NOT NULL, -- 'Q1', 'Q2', 'Q3', 'Q4', 'Annual'
     target_amount NUMERIC(15,2) NOT NULL DEFAULT 0.00,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,

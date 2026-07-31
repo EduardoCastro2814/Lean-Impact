@@ -10,7 +10,7 @@ import {
   Calendar
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { dbService, checkConnection } from '../lib/supabaseClient';
+import { dbService, checkConnection, getFyDisplayLabel } from '../lib/supabaseClient';
 import type { SavingsTarget } from '../lib/supabaseClient';
 
 const convertExcelDate = (excelVal: any): string | null => {
@@ -19,21 +19,23 @@ const convertExcelDate = (excelVal: any): string | null => {
   
   // Check if value is a numeric Excel serial date (decimal or integer)
   if (/^\d+(\.\d+)?$/.test(str)) {
-    const num = parseFloat(str);
-    if (num > 0 && num < 1000000) {
-      // Excel epoch starts on 1899-12-30 due to a leap year Lotus compatibility bug
-      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
-      if (!isNaN(date.getTime())) {
-        return date.toISOString().split('T')[0];
-      }
+    const serial = parseFloat(str);
+    // Excel base date is 1899-12-30 (accounting for leap year bug in 1900)
+    const baseDate = new Date(1899, 11, 30);
+    const dateMs = baseDate.getTime() + serial * 86400000;
+    const parsedDate = new Date(dateMs);
+    
+    if (!isNaN(parsedDate.getTime())) {
+      return parsedDate.toISOString().split('T')[0];
     }
   }
   
-  // Fallback to regular JS parsing
-  const parsed = new Date(str);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
+  // Fall back to JavaScript standard Date parsing (e.g. ISO format or standard date strings)
+  const parsed = Date.parse(str);
+  if (!isNaN(parsed)) {
+    return new Date(parsed).toISOString().split('T')[0];
   }
+  
   return null;
 };
 
@@ -67,7 +69,7 @@ export const Configuration: React.FC = () => {
   // Fiscal Years States
   const [fiscalYears, setFiscalYears] = useState<any[]>([]);
   const [newFiscalYear, setNewFiscalYear] = useState<string>('');
-  const [importFiscalYear, setImportFiscalYear] = useState<string>('FY26');
+  const [importFiscalYear, setImportFiscalYear] = useState<string>('');
   const [fyMessage, setFyMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [editingFyId, setEditingFyId] = useState<string | null>(null);
   const [editingFyVal, setEditingFyVal] = useState<string>('');
@@ -101,12 +103,11 @@ export const Configuration: React.FC = () => {
       setFiscalYears(data);
       const activeFy = data.find(fy => fy.active);
       if (activeFy) {
-        setImportFiscalYear(activeFy.fiscal_year);
         setFiscalYear(activeFy.fiscal_year);
       } else if (data.length > 0) {
-        setImportFiscalYear(data[0].fiscal_year);
         setFiscalYear(data[0].fiscal_year);
       }
+      setImportFiscalYear('');
     } catch (e) {
       console.error(e);
     }
@@ -137,11 +138,11 @@ export const Configuration: React.FC = () => {
     }
     try {
       await dbService.addFiscalYear(fyStr);
-      setFyMessage({ type: 'success', text: `Fiscal year ${fyStr} successfully added!` });
+      setFyMessage({ type: 'success', text: `FY ${fyStr} successfully added!` });
       setNewFiscalYear('');
       await loadFiscalYears();
     } catch (err: any) {
-      setFyMessage({ type: 'error', text: err.message || 'Error adding fiscal year.' });
+      setFyMessage({ type: 'error', text: err.message || 'Error adding FY.' });
     }
   };
 
@@ -155,14 +156,24 @@ export const Configuration: React.FC = () => {
     }
   };
 
-  const handleDeleteFiscalYear = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this fiscal year? Targets for this year will no longer be visible.')) return;
+  const handleDeleteFiscalYear = async (id: string, fiscalYearStr: string) => {
     try {
-      await dbService.deleteFiscalYear(id);
+      const hasData = await dbService.checkFiscalYearData(fiscalYearStr);
+      if (hasData) {
+        if (!confirm(`This FY contains project or target data.\n\nAre you sure you want to delete ${fiscalYearStr} and all related records? This action cannot be undone.`)) {
+          return;
+        }
+      } else {
+        if (!confirm(`Are you sure you want to delete ${fiscalYearStr}?`)) {
+          return;
+        }
+      }
+      await dbService.deleteFiscalYearCascade(id, fiscalYearStr);
       await loadFiscalYears();
       window.dispatchEvent(new Event('lean-impact-db-changed'));
     } catch (err: any) {
       console.error(err);
+      alert(err.message || 'Error deleting FY.');
     }
   };
 
@@ -183,7 +194,7 @@ export const Configuration: React.FC = () => {
       await loadFiscalYears();
       window.dispatchEvent(new Event('lean-impact-db-changed'));
     } catch (err: any) {
-      alert(err.message || 'Error updating fiscal year.');
+      alert(err.message || 'Error updating FY.');
     }
   };
 
@@ -658,12 +669,12 @@ export const Configuration: React.FC = () => {
 
       <div className="config-section-container">
         
-        {/* Section 1: Fiscal Year Management */}
+        {/* Section 1: FY Management */}
         <div className="card">
           <div className="card-header-row" style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '16px' }}>
             <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Calendar size={20} className="text-primary" />
-              Fiscal Year Management
+              FY Management
             </span>
           </div>
 
@@ -671,7 +682,7 @@ export const Configuration: React.FC = () => {
             {/* Form */}
             <form onSubmit={handleAddFiscalYear} className="form-grid-quarter" style={{ gap: '16px' }}>
               <div className="filter-group">
-                <label className="filter-label">Add Fiscal Year (e.g. FY27)</label>
+                <label className="filter-label">Add FY (e.g. FY27)</label>
                 <input
                   type="text"
                   className="form-input"
@@ -690,7 +701,7 @@ export const Configuration: React.FC = () => {
 
             {/* List */}
             <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px' }}>
-              <span className="filter-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Active Fiscal Years</span>
+              <span className="filter-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Active FY List</span>
               {fiscalYears.length > 0 ? (
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {fiscalYears.map(fy => (
@@ -709,7 +720,7 @@ export const Configuration: React.FC = () => {
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontWeight: 600 }}>{fy.fiscal_year}</span>
+                          <span style={{ fontWeight: 600 }}>{getFyDisplayLabel(fy.fiscal_year)}</span>
                           {fy.active && <span style={{ fontSize: '0.7rem', color: '#15803D', backgroundColor: '#DCFCE7', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Active</span>}
                         </div>
                       )}
@@ -731,7 +742,7 @@ export const Configuration: React.FC = () => {
                             Edit
                           </button>
                           <button 
-                            onClick={() => handleDeleteFiscalYear(fy.id)} 
+                            onClick={() => handleDeleteFiscalYear(fy.id, fy.fiscal_year)} 
                             style={{ border: 'none', background: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '0.8rem' }}
                           >
                             Delete
@@ -742,7 +753,7 @@ export const Configuration: React.FC = () => {
                   ))}
                 </ul>
               ) : (
-                <span style={{ fontSize: '0.8rem', color: '#9CA3AF' }}>No fiscal years configured.</span>
+                <span style={{ fontSize: '0.8rem', color: '#9CA3AF' }}>No FYs configured.</span>
               )}
             </div>
           </div>
@@ -775,10 +786,10 @@ export const Configuration: React.FC = () => {
             {/* Form */}
             <form onSubmit={handleSaveTarget} className="form-grid-quarter" style={{ gap: '16px' }}>
               <div className="filter-group">
-                <label className="filter-label">Fiscal Year</label>
+                <label className="filter-label">FY</label>
                 <select className="filter-select" value={fiscalYear} onChange={(e) => setFiscalYear(e.target.value)}>
                   {fiscalYears.map(fy => (
-                    <option key={fy.id} value={fy.fiscal_year}>{fy.fiscal_year}</option>
+                    <option key={fy.id} value={fy.fiscal_year}>{getFyDisplayLabel(fy.fiscal_year)}</option>
                   ))}
                 </select>
               </div>
@@ -1032,16 +1043,17 @@ export const Configuration: React.FC = () => {
             </div>
 
             <div className="filter-group" style={{ marginBottom: '16px' }}>
-              <label className="filter-label" style={{ fontWeight: 600 }}>Target Import Fiscal Year</label>
+              <label className="filter-label" style={{ fontWeight: 600 }}>Target Import FY</label>
               <select 
                 className="filter-select" 
                 value={importFiscalYear} 
                 onChange={(e) => setImportFiscalYear(e.target.value)}
                 style={{ width: '100%' }}
               >
+                <option value="">-- Select FY --</option>
                 {fiscalYears.map(fy => (
                   <option key={fy.id} value={fy.fiscal_year}>
-                    {fy.fiscal_year} {fy.active ? '(Active)' : ''}
+                    {getFyDisplayLabel(fy.fiscal_year)} {fy.active ? '(Active)' : ''}
                   </option>
                 ))}
               </select>
@@ -1063,10 +1075,10 @@ export const Configuration: React.FC = () => {
               </label>
             </div>
 
-            <label className="import-upload-zone">
+            <label className="import-upload-zone" style={{ opacity: !importFiscalYear ? 0.6 : 1, cursor: !importFiscalYear ? 'not-allowed' : 'pointer' }}>
               <Upload className="import-upload-zone-icon" size={32} />
               <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1F2937' }}>
-                {importLoading === 'approved' ? 'Analyzing file structure...' : 'Click to select or drag Excel file'}
+                {importLoading === 'approved' ? 'Analyzing file structure...' : !importFiscalYear ? '⚠️ Please select a Target Import FY first' : 'Click to select or drag Excel file'}
               </span>
               <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>Supports XLS, XLSX</span>
               <input 
@@ -1074,7 +1086,7 @@ export const Configuration: React.FC = () => {
                 className="upload-input" 
                 accept=".xlsx, .xls"
                 onChange={(e) => handleFileUpload(e, 'approved')}
-                disabled={importLoading !== null}
+                disabled={importLoading !== null || !importFiscalYear}
               />
             </label>
 
@@ -1109,16 +1121,17 @@ export const Configuration: React.FC = () => {
             </div>
 
             <div className="filter-group" style={{ marginBottom: '16px' }}>
-              <label className="filter-label" style={{ fontWeight: 600 }}>Target Import Fiscal Year</label>
+              <label className="filter-label" style={{ fontWeight: 600 }}>Target Import FY</label>
               <select 
                 className="filter-select" 
                 value={importFiscalYear} 
                 onChange={(e) => setImportFiscalYear(e.target.value)}
                 style={{ width: '100%' }}
               >
+                <option value="">-- Select FY --</option>
                 {fiscalYears.map(fy => (
                   <option key={fy.id} value={fy.fiscal_year}>
-                    {fy.fiscal_year} {fy.active ? '(Active)' : ''}
+                    {getFyDisplayLabel(fy.fiscal_year)} {fy.active ? '(Active)' : ''}
                   </option>
                 ))}
               </select>
@@ -1140,10 +1153,10 @@ export const Configuration: React.FC = () => {
               </label>
             </div>
 
-            <label className="import-upload-zone" style={{ borderStyle: 'dashed' }}>
+            <label className="import-upload-zone" style={{ borderStyle: 'dashed', opacity: !importFiscalYear ? 0.6 : 1, cursor: !importFiscalYear ? 'not-allowed' : 'pointer' }}>
               <Upload style={{ color: '#3B82F6' }} size={32} />
               <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1F2937' }}>
-                {importLoading === 'open' ? 'Analyzing file structure...' : 'Click to select or drag Excel file'}
+                {importLoading === 'open' ? 'Analyzing file structure...' : !importFiscalYear ? '⚠️ Please select a Target Import FY first' : 'Click to select or drag Excel file'}
               </span>
               <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>Supports XLS, XLSX</span>
               <input 
@@ -1151,7 +1164,7 @@ export const Configuration: React.FC = () => {
                 className="upload-input" 
                 accept=".xlsx, .xls"
                 onChange={(e) => handleFileUpload(e, 'open')}
-                disabled={importLoading !== null}
+                disabled={importLoading !== null || !importFiscalYear}
               />
             </label>
 

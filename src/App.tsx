@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
-import { checkConnection } from './lib/supabaseClient';
+import { checkConnection, dbService } from './lib/supabaseClient';
 
 // Views
 import { Dashboard } from './components/Dashboard';
@@ -12,6 +12,19 @@ import { Configuration } from './components/Configuration';
 
 export const App: React.FC = () => {
   const location = useLocation();
+  const [activeFy, setActiveFy] = useState<string>('FY26');
+
+  const loadActiveFy = async () => {
+    try {
+      const data = await dbService.getFiscalYears();
+      const active = data.find(fy => fy.active);
+      if (active) {
+        setActiveFy(active.fiscal_year);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     const checkDb = async () => {
@@ -19,6 +32,12 @@ export const App: React.FC = () => {
       console.log(`[Lean Impact Startup] Supabase Connection Verified: ${connected}`);
     };
     checkDb();
+    loadActiveFy();
+
+    window.addEventListener('lean-impact-db-changed', loadActiveFy);
+    return () => {
+      window.removeEventListener('lean-impact-db-changed', loadActiveFy);
+    };
   }, []);
 
   const getPageTitle = (pathname: string) => {
@@ -75,7 +94,7 @@ export const App: React.FC = () => {
               fontWeight: 600,
               fontSize: '0.8rem'
             }}>
-              Active Fiscal Year: 2026
+              Active FY: {activeFy}
             </div>
           </div>
         </header>

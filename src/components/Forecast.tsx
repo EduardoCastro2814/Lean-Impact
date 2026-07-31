@@ -22,7 +22,7 @@ import {
   ReferenceLine
 } from 'recharts';
 import html2canvas from 'html2canvas';
-import { dbService } from '../lib/supabaseClient';
+import { dbService, getFyDisplayLabel } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen, SavingsTarget } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
@@ -192,14 +192,14 @@ export const Forecast: React.FC = () => {
       {/* Top Selector Panel */}
       <div className="filters-panel">
         <div className="filter-group" style={{ minWidth: '140px', flexGrow: 0 }}>
-          <label className="filter-label">Select Fiscal Year</label>
+          <label className="filter-label">Select FY</label>
           <select 
             className="filter-select"
             value={fiscalYear} 
             onChange={(e) => setFiscalYear(e.target.value)}
           >
             {fiscalYears.map(fy => (
-              <option key={fy.id} value={fy.fiscal_year}>{fy.fiscal_year} Fiscal Year</option>
+              <option key={fy.id} value={fy.fiscal_year}>{getFyDisplayLabel(fy.fiscal_year)}</option>
             ))}
           </select>
         </div>
@@ -312,7 +312,7 @@ export const Forecast: React.FC = () => {
               <div>
                 <strong style={{ fontSize: '1rem', display: 'block' }}>Savings Deficit Detected</strong>
                 <span style={{ fontSize: '0.85rem' }}>
-                  A gap of <strong>{formatCurrency(remainingGap)}</strong> is projected for this fiscal year. 
+                  A gap of <strong>{formatCurrency(remainingGap)}</strong> is projected for this FY. 
                   To secure the target, the lean program needs to identify additional Kaizen or SGA projects to add at least <strong>{formatCurrency(remainingGap)}</strong> in potential savings.
                 </span>
               </div>
