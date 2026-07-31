@@ -12,6 +12,30 @@ import * as XLSX from 'xlsx';
 import { dbService, checkConnection } from '../lib/supabaseClient';
 import type { SavingsTarget } from '../lib/supabaseClient';
 
+const convertExcelDate = (excelVal: any): string | null => {
+  if (excelVal === null || excelVal === undefined || excelVal === '') return null;
+  const str = excelVal.toString().trim();
+  
+  // Check if value is a numeric Excel serial date (decimal or integer)
+  if (/^\d+(\.\d+)?$/.test(str)) {
+    const num = parseFloat(str);
+    if (num > 0 && num < 1000000) {
+      // Excel epoch starts on 1899-12-30 due to a leap year Lotus compatibility bug
+      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    }
+  }
+  
+  // Fallback to regular JS parsing
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split('T')[0];
+  }
+  return null;
+};
+
 const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -323,18 +347,9 @@ export const Configuration: React.FC = () => {
             const fteVal = parseVal(colIdxFte);
             const otVal = parseVal(colIdxOneTime);
 
-            // Date parsing helpers
-            const parseDateString = (val: string): string => {
-              if (!val) return new Date().toISOString().split('T')[0];
-              const parsed = new Date(val);
-              return isNaN(parsed.getTime()) ? new Date().toISOString().split('T')[0] : parsed.toISOString().split('T')[0];
-            };
-
-            const parseDateStringOrNull = (val: string): string | null => {
-              if (!val) return null;
-              const parsed = new Date(val);
-              return isNaN(parsed.getTime()) ? null : parsed.toISOString().split('T')[0];
-            };
+            const formattedDate = convertExcelDate(pDate) || new Date().toISOString().split('T')[0];
+            const compVal = colIdxComp !== -1 && row[colIdxComp] ? row[colIdxComp].toString().trim() : '';
+            const formattedCompDate = convertExcelDate(compVal);
 
             const projectMapped: any = {
               project_id: pId,
@@ -349,17 +364,17 @@ export const Configuration: React.FC = () => {
               soft_savings: softVal,
               inventory_savings: invVal,
               fte_savings: fteVal,
-              one_time_savings: otVal
+              one_time_savings: otVal,
+              completion_date: formattedCompDate,
+              _raw_date: pDate,
+              _raw_comp_date: compVal
             };
 
             if (type === 'approved') {
-              projectMapped.approval_date = parseDateString(pDate);
+              projectMapped.approval_date = formattedDate;
             } else {
-              projectMapped.created_date = parseDateString(pDate);
+              projectMapped.created_date = formattedDate;
             }
-
-            const compVal = colIdxComp !== -1 && row[colIdxComp] ? row[colIdxComp].toString().trim() : '';
-            projectMapped.completion_date = parseDateStringOrNull(compVal);
 
             // Optional structural metadata
             projectMapped.project_category = colIdxCategory !== -1 && row[colIdxCategory] ? row[colIdxCategory].toString().trim() : 'General';
@@ -627,7 +642,46 @@ export const Configuration: React.FC = () => {
                 </div>
               </div>
 
-              {/* Mapped Columns Mapping Summary */}
+              {/* Date Mappings Preview */}
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
+                  📅 Date Conversion Preview (Original Excel Value ➔ Converted Date):
+                </span>
+                <div style={{ overflowX: 'auto', border: '1px solid #D1D5DB', borderRadius: '6px', backgroundColor: '#FFFFFF' }}>
+                  <table style={{ minWidth: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#F3F4F6' }}>
+                        <th style={{ padding: '6px 8px', borderBottom: '1px solid #D1D5DB', color: '#4B5563', fontWeight: 'bold' }}>Project ID</th>
+                        <th style={{ padding: '6px 8px', borderBottom: '1px solid #D1D5DB', color: '#4B5563', fontWeight: 'bold' }}>Project Title</th>
+                        <th style={{ padding: '6px 8px', borderBottom: '1px solid #D1D5DB', color: '#4B5563', fontWeight: 'bold' }}>
+                          {pendingImport.type === 'approved' ? 'Approval Date' : 'Created Date'} (Original ➔ ISO)
+                        </th>
+                        <th style={{ padding: '6px 8px', borderBottom: '1px solid #D1D5DB', color: '#4B5563', fontWeight: 'bold' }}>
+                          Completion Date (Original ➔ ISO)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingImport.projects.slice(0, 5).map((p, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #F3F4F6', backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }}>
+                          <td style={{ padding: '6px 8px', color: '#111827', fontWeight: 600 }}>{p.project_id}</td>
+                          <td style={{ padding: '6px 8px', color: '#374151', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.project_title}</td>
+                          <td style={{ padding: '6px 8px', color: '#111827' }}>
+                            <span style={{ color: '#6B7280' }}>{p._raw_date || '(Blank)'}</span>
+                            <span> ➔ </span>
+                            <strong style={{ color: '#15803D' }}>{p.approval_date || p.created_date || 'NULL'}</strong>
+                          </td>
+                          <td style={{ padding: '6px 8px', color: '#111827' }}>
+                            <span style={{ color: '#6B7280' }}>{p._raw_comp_date || '(Blank)'}</span>
+                            <span> ➔ </span>
+                            <strong style={{ color: p.completion_date ? '#15803D' : '#9CA3AF' }}>{p.completion_date || 'NULL'}</strong>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               <div>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
                   Mapped Columns:
