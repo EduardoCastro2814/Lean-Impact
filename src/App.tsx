@@ -6,7 +6,6 @@ import { checkConnection, dbService } from './lib/supabaseClient';
 // Views
 import { Dashboard } from './components/Dashboard';
 import { Projects } from './components/Projects';
-import { Forecast } from './components/Forecast';
 import { Facilitators } from './components/Facilitators';
 import { Configuration } from './components/Configuration';
 
@@ -48,8 +47,6 @@ export const App: React.FC = () => {
         return 'Executive Dashboard';
       case '/projects':
         return 'Project Savings Tracker';
-      case '/forecast':
-        return 'Strategic Forecast';
       case '/facilitators':
         return 'Facilitator Program Performance';
       case '/configuration':
@@ -65,8 +62,6 @@ export const App: React.FC = () => {
         return 'Lean Impact / Dashboard';
       case '/projects':
         return 'Lean Impact / Projects';
-      case '/forecast':
-        return 'Lean Impact / Strategic Forecast';
       case '/facilitators':
         return 'Lean Impact / Facilitators';
       case '/configuration':
@@ -105,7 +100,6 @@ export const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/projects" element={<Projects />} />
-            <Route path="/forecast" element={<Forecast />} />
             <Route path="/facilitators" element={<Facilitators />} />
             <Route path="/configuration" element={<Configuration />} />
             <Route path="*" element={<Navigate to="/" replace />} />

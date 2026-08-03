@@ -154,8 +154,7 @@ export const Dashboard: React.FC = () => {
   const potentialSavings = potentialOp + potentialOneTime;
 
   // Other Executive KPIs
-  const expectedFinalSavings = realizedSavings + potentialSavings;
-  const forecastAchievementPercent = annualTarget > 0 ? (expectedFinalSavings / annualTarget) * 100 : 0;
+  const targetAchievementPercent = annualTarget > 0 ? (realizedSavings / annualTarget) * 100 : 0;
   const rawGap = annualTarget - realizedSavings;
   const savingsGap = rawGap > 0 ? rawGap : 0;
   
@@ -164,7 +163,7 @@ export const Dashboard: React.FC = () => {
   const approvedCount = approvedFiltered.filter(p => getFiscalMonthIndex(p.approval_date) <= endMonthIdx).length;
 
   // Visual Progress Gauge markers
-  const maxBarVal = Math.max(annualTarget, expectedFinalSavings);
+  const maxBarVal = Math.max(annualTarget, realizedSavings + potentialSavings);
   const realizedPercent = maxBarVal > 0 ? (realizedSavings / maxBarVal) * 100 : 0;
   const potentialPercent = maxBarVal > 0 ? (potentialSavings / maxBarVal) * 100 : 0;
 
@@ -234,14 +233,10 @@ export const Dashboard: React.FC = () => {
     
     let actualVal = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
 
-    const potentialVal = openFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
-    const forecastVal = actualVal + potentialVal;
-
     return {
       name: q,
       'Target Savings': Math.round(targetVal),
       'Actual Savings': Math.round(actualVal),
-      'Forecast Savings': Math.round(forecastVal),
       'Variance': Math.round(actualVal - targetVal)
     };
   });
@@ -311,7 +306,6 @@ export const Dashboard: React.FC = () => {
               <Legend />
               <Line type="monotone" dataKey="Actual Savings" stroke="#16A34A" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
               <Line type="monotone" dataKey="Target Savings" stroke="#4B5563" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="Forecast Savings" stroke="#2563EB" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
           
@@ -323,7 +317,6 @@ export const Dashboard: React.FC = () => {
                   <th style={{ padding: '12px 16px', fontWeight: 700 }}>Target Savings</th>
                   <th style={{ padding: '12px 16px', fontWeight: 700 }}>Actual Savings (Realized)</th>
                   <th style={{ padding: '12px 16px', fontWeight: 700 }}>Variance to Target</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Forecast Savings (Cumulative)</th>
                 </tr>
               </thead>
               <tbody>
@@ -337,7 +330,6 @@ export const Dashboard: React.FC = () => {
                       <td style={{ padding: '10px 16px', color: isPositive ? '#16A34A' : '#DC2626', fontWeight: 600 }}>
                         {isPositive ? '+' : ''}{formatCurrency(row.Variance)}
                       </td>
-                      <td style={{ padding: '10px 16px', color: '#2563EB' }}>{formatCurrency(row['Forecast Savings'])}</td>
                     </tr>
                   );
                 })}
@@ -562,22 +554,18 @@ export const Dashboard: React.FC = () => {
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: isPresentation ? '4px' : '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: isPresentation ? '4px' : '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Target FY Milestone</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Annual Target</span>
               <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#111827' }}>{formatCurrency(annualTarget)}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Current Realized Savings</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Current Qualified Savings</span>
               <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Potential Savings</span>
-              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#2563EB' }}>{formatCurrency(potentialSavings)}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Forecast End of FY</span>
-              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#0F766E' }}>{formatCurrency(expectedFinalSavings)}</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Remaining Target Gap</span>
+              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#DC2626' }}>{formatCurrency(savingsGap)}</span>
             </div>
           </div>
 
@@ -616,7 +604,7 @@ export const Dashboard: React.FC = () => {
           
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.7rem', color: '#6B7280', fontWeight: 600 }}>
             <span>0%</span>
-            <span>Forecast Achieved: {forecastAchievementPercent.toFixed(1)}%</span>
+            <span>Target Achieved: {targetAchievementPercent.toFixed(1)}%</span>
             <span>100% Target Milestone</span>
           </div>
         </div>

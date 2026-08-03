@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Briefcase, 
-  TrendingUp, 
   Users, 
   Settings 
 } from 'lucide-react';
@@ -13,7 +12,6 @@ export const Sidebar: React.FC = () => {
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: 'Projects', path: '/projects', icon: <Briefcase size={20} /> },
-    { name: 'Forecast', path: '/forecast', icon: <TrendingUp size={20} /> },
     { name: 'Facilitators', path: '/facilitators', icon: <Users size={20} /> },
     { name: 'Configuration', path: '/configuration', icon: <Settings size={20} /> },
   ];
