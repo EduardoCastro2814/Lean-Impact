@@ -9,7 +9,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { dbService } from '../lib/supabaseClient';
+import { dbService, getProjectPeriodSavings, getFiscalMonthIndex } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
@@ -127,8 +127,8 @@ export const Projects: React.FC = () => {
   // Export Table to Excel
   const handleExportExcel = () => {
     const dataToExport = filteredProjects.map(p => {
-      const targetSavings = p.op_contribution + p.one_time_savings;
-      const totalSavings = p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings;
+      const targetSavings = getProjectPeriodSavings(p, 11);
+      const totalSavings = getProjectPeriodSavings(p, 11) + p.soft_savings + p.inventory_savings;
       const dateLabel = activeTab === 'approved' ? 'Approval Date' : 'Created Date';
       const dateVal = activeTab === 'approved' ? p.approval_date : p.created_date;
 
@@ -282,7 +282,7 @@ export const Projects: React.FC = () => {
             </thead>
             <tbody>
               {filteredProjects.map((p) => {
-                const savings = p.op_contribution + p.one_time_savings;
+                const savings = getProjectPeriodSavings(p, 11);
                 return (
                   <tr key={p.id} onClick={() => setSelectedProject(p)}>
                     <td style={{ fontWeight: 700, color: '#111827' }}>{p.project_id}</td>
@@ -439,7 +439,7 @@ export const Projects: React.FC = () => {
                       Target-Qualifying Savings (OP + One-Time):
                     </span>
                     <span className="detail-value savings" style={{ fontSize: '1.1rem', color: '#15803D' }}>
-                      {formatCurrency(selectedProject.op_contribution + selectedProject.one_time_savings)}
+                      {formatCurrency(getProjectPeriodSavings(selectedProject, 11))}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #D1D5DB', paddingTop: '6px' }}>
@@ -448,10 +448,9 @@ export const Projects: React.FC = () => {
                     </span>
                     <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#4B5563' }}>
                       {formatCurrency(
-                        selectedProject.op_contribution +
+                        getProjectPeriodSavings(selectedProject, 11) +
                         selectedProject.soft_savings +
-                        selectedProject.inventory_savings +
-                        selectedProject.one_time_savings
+                        selectedProject.inventory_savings
                       )}
                     </span>
                   </div>

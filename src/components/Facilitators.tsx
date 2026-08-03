@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-import { dbService, getFyDisplayLabel } from '../lib/supabaseClient';
+import { dbService, getFyDisplayLabel, getProjectPeriodSavings } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
@@ -87,7 +87,7 @@ export const Facilitators: React.FC = () => {
     // Aggregate Approved
     approvedFiltered.forEach(p => {
       const name = p.facilitator || 'Unassigned';
-      const savings = p.op_contribution + p.one_time_savings;
+      const savings = getProjectPeriodSavings(p, 11);
       
       if (!facilitatorsMap[name]) {
         facilitatorsMap[name] = {
@@ -106,7 +106,7 @@ export const Facilitators: React.FC = () => {
     // Aggregate Open
     openFiltered.forEach(p => {
       const name = p.facilitator || 'Unassigned';
-      const savings = p.op_contribution + p.one_time_savings;
+      const savings = getProjectPeriodSavings(p, 11);
       
       if (!facilitatorsMap[name]) {
         facilitatorsMap[name] = {

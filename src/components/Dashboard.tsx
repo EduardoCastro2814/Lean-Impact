@@ -21,7 +21,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import html2canvas from 'html2canvas';
-import { dbService, getFyDisplayLabel } from '../lib/supabaseClient';
+import { dbService, getFyDisplayLabel, getFiscalMonthIndex, getProjectPeriodSavings } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen, SavingsTarget } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
@@ -77,39 +77,50 @@ export const Dashboard: React.FC = () => {
     };
   }, []);
 
-  // Filter projects by selected Fiscal Year and Quarter
-  const approvedFiltered = approvedProjects.filter(p => 
-    p.fiscal_year === fiscalYear && 
-    (quarter === 'All' || p.fiscal_quarter === quarter)
-  );
+  // End month index for cumulative mapping
+  const endMonthIdx = quarter === 'Q1' ? 2 : quarter === 'Q2' ? 5 : quarter === 'Q3' ? 8 : 11;
 
-  const openFiltered = openProjects.filter(p => 
-    p.fiscal_year === fiscalYear && 
-    (quarter === 'All' || p.fiscal_quarter === quarter)
-  );
+  // Filter projects by selected Fiscal Year (we calculate their period impact later)
+  const approvedFiltered = approvedProjects.filter(p => p.fiscal_year === fiscalYear);
+  const openFiltered = openProjects.filter(p => p.fiscal_year === fiscalYear);
 
-  // Targets filtered
-  const yearTargets = targets.filter(t => 
-    t.fiscal_year === fiscalYear && 
-    (quarter === 'All' ? t.quarter !== 'Annual' : t.quarter === quarter)
-  );
-  
-  const annualTarget = yearTargets.reduce((sum, t) => sum + t.target_amount, 0);
+  // Targets: milestone-based (non-summing)
+  const getTargetForPeriod = (targetsList: SavingsTarget[], fy: string, q: string): number => {
+    const yearTargets = targetsList.filter(t => t.fiscal_year === fy);
+    if (yearTargets.length === 0) return 0;
+    if (q === 'All') {
+      const q4Target = yearTargets.find(t => t.quarter === 'Q4');
+      if (q4Target) return q4Target.target_amount;
+      const annualTarget = yearTargets.find(t => t.quarter === 'Annual');
+      if (annualTarget) return annualTarget.target_amount;
+      return Math.max(...yearTargets.map(t => t.target_amount));
+    } else {
+      const qTarget = yearTargets.find(t => t.quarter === q);
+      return qTarget ? qTarget.target_amount : 0;
+    }
+  };
+  const annualTarget = getTargetForPeriod(targets, fiscalYear, quarter);
 
   // Realized Breakdown (Approved Projects)
-  const realizedOp = approvedFiltered.reduce((sum, p) => sum + p.op_contribution, 0);
-  const realizedSoft = approvedFiltered.reduce((sum, p) => sum + p.soft_savings, 0);
-  const realizedInventory = approvedFiltered.reduce((sum, p) => sum + p.inventory_savings, 0);
-  const realizedOneTime = approvedFiltered.reduce((sum, p) => sum + p.one_time_savings, 0);
-  const realizedFte = approvedFiltered.reduce((sum, p) => sum + p.fte_savings, 0);
+  const realizedOp = approvedFiltered.reduce((sum, p) => {
+    const mProj = getFiscalMonthIndex(p.approval_date);
+    return sum + (mProj <= endMonthIdx ? p.op_contribution * (endMonthIdx - mProj + 1) : 0);
+  }, 0);
+  const realizedSoft = approvedFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.approval_date) <= endMonthIdx ? p.soft_savings : 0), 0);
+  const realizedInventory = approvedFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.approval_date) <= endMonthIdx ? p.inventory_savings : 0), 0);
+  const realizedOneTime = approvedFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.approval_date) <= endMonthIdx ? p.one_time_savings : 0), 0);
+  const realizedFte = approvedFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.approval_date) <= endMonthIdx ? p.fte_savings : 0), 0);
   const realizedSavings = realizedOp + realizedOneTime;
 
   // Potential Breakdown (Open Projects)
-  const potentialOp = openFiltered.reduce((sum, p) => sum + p.op_contribution, 0);
-  const potentialSoft = openFiltered.reduce((sum, p) => sum + p.soft_savings, 0);
-  const potentialInventory = openFiltered.reduce((sum, p) => sum + p.inventory_savings, 0);
-  const potentialOneTime = openFiltered.reduce((sum, p) => sum + p.one_time_savings, 0);
-  const potentialFte = openFiltered.reduce((sum, p) => sum + p.fte_savings, 0);
+  const potentialOp = openFiltered.reduce((sum, p) => {
+    const mProj = getFiscalMonthIndex(p.created_date);
+    return sum + (mProj <= endMonthIdx ? p.op_contribution * (endMonthIdx - mProj + 1) : 0);
+  }, 0);
+  const potentialSoft = openFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.created_date) <= endMonthIdx ? p.soft_savings : 0), 0);
+  const potentialInventory = openFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.created_date) <= endMonthIdx ? p.inventory_savings : 0), 0);
+  const potentialOneTime = openFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.created_date) <= endMonthIdx ? p.one_time_savings : 0), 0);
+  const potentialFte = openFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.created_date) <= endMonthIdx ? p.fte_savings : 0), 0);
   const potentialSavings = potentialOp + potentialOneTime;
 
   // Overall Breakdown (Total Savings)
@@ -126,8 +137,10 @@ export const Dashboard: React.FC = () => {
   const forecastAchievementPercent = annualTarget > 0 ? (expectedFinalSavings / annualTarget) * 100 : 0;
   const rawGap = annualTarget - realizedSavings;
   const savingsGap = rawGap > 0 ? rawGap : 0;
-  const openCount = openFiltered.length;
-  const approvedCount = approvedFiltered.length;
+  
+  // Filter count projects for period display
+  const openCount = openFiltered.filter(p => getFiscalMonthIndex(p.created_date) <= endMonthIdx).length;
+  const approvedCount = approvedFiltered.filter(p => getFiscalMonthIndex(p.approval_date) <= endMonthIdx).length;
 
   // Visual Progress Gauge markers
   const maxBarVal = Math.max(annualTarget, expectedFinalSavings);
@@ -150,43 +163,57 @@ export const Dashboard: React.FC = () => {
     { name: 'Mar', index: 2 }
   ];
 
-  const realizedByTypeData = fiscalMonths.map(m => {
-    const projectsInMonth = approvedFiltered.filter(p => new Date(p.approval_date).getMonth() === m.index);
+  const realizedByTypeData = fiscalMonths.map((m, monthIdx) => {
+    // Approved up to this month contributes OP
+    const opSavings = approvedFiltered
+      .filter(p => getFiscalMonthIndex(p.approval_date) <= monthIdx)
+      .reduce((sum, p) => sum + p.op_contribution, 0);
+
+    // Only approved in exactly this month contributes One Time, Soft, Inventory
+    const currentMonthProjects = approvedFiltered.filter(p => getFiscalMonthIndex(p.approval_date) === monthIdx);
+    const oneTime = currentMonthProjects.reduce((sum, p) => sum + p.one_time_savings, 0);
+    const soft = currentMonthProjects.reduce((sum, p) => sum + p.soft_savings, 0);
+    const inventory = currentMonthProjects.reduce((sum, p) => sum + p.inventory_savings, 0);
+
     return {
       name: m.name,
-      'OP Contribution': projectsInMonth.reduce((sum, p) => sum + p.op_contribution, 0),
-      'Soft Savings': projectsInMonth.reduce((sum, p) => sum + p.soft_savings, 0),
-      'Inventory Savings': projectsInMonth.reduce((sum, p) => sum + p.inventory_savings, 0),
-      'One Time Savings': projectsInMonth.reduce((sum, p) => sum + p.one_time_savings, 0)
+      'OP Contribution': opSavings,
+      'Soft Savings': soft,
+      'Inventory Savings': inventory,
+      'One Time Savings': oneTime
     };
   });
 
   // 2. Chart 2: Potential Savings by Type (stacked month trend April to March)
-  const potentialByTypeData = fiscalMonths.map(m => {
-    const projectsInMonth = openFiltered.filter(p => new Date(p.created_date).getMonth() === m.index);
+  const potentialByTypeData = fiscalMonths.map((m, monthIdx) => {
+    const opSavings = openFiltered
+      .filter(p => getFiscalMonthIndex(p.created_date) <= monthIdx)
+      .reduce((sum, p) => sum + p.op_contribution, 0);
+
+    const currentMonthProjects = openFiltered.filter(p => getFiscalMonthIndex(p.created_date) === monthIdx);
+    const oneTime = currentMonthProjects.reduce((sum, p) => sum + p.one_time_savings, 0);
+    const soft = currentMonthProjects.reduce((sum, p) => sum + p.soft_savings, 0);
+    const inventory = currentMonthProjects.reduce((sum, p) => sum + p.inventory_savings, 0);
+
     return {
       name: m.name,
-      'OP Contribution': projectsInMonth.reduce((sum, p) => sum + p.op_contribution, 0),
-      'Soft Savings': projectsInMonth.reduce((sum, p) => sum + p.soft_savings, 0),
-      'Inventory Savings': projectsInMonth.reduce((sum, p) => sum + p.inventory_savings, 0),
-      'One Time Savings': projectsInMonth.reduce((sum, p) => sum + p.one_time_savings, 0)
+      'OP Contribution': opSavings,
+      'Soft Savings': soft,
+      'Inventory Savings': inventory,
+      'One Time Savings': oneTime
     };
   });
 
   // 3. Chart 3: Savings by Fiscal Quarter
   const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-  const quarterlySavingsData = quarters.map(q => {
-    const qTarget = targets
-      .filter(t => t.fiscal_year === fiscalYear && t.quarter === q)
-      .reduce((sum, t) => sum + t.target_amount, 0);
+  const quarterlySavingsData = quarters.map((q, qIdx) => {
+    const endMonthIdxForQ = qIdx === 0 ? 2 : qIdx === 1 ? 5 : qIdx === 2 ? 8 : 11;
     
-    const qApproved = approvedProjects
-      .filter(p => p.fiscal_year === fiscalYear && p.fiscal_quarter === q)
-      .reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
-    
-    const qOpen = openProjects
-      .filter(p => p.fiscal_year === fiscalYear && p.fiscal_quarter === q)
-      .reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
+    // Milestone targets (non-summing)
+    const qTarget = getTargetForPeriod(targets, fiscalYear, q);
+
+    const qApproved = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, endMonthIdxForQ), 0);
+    const qOpen = openFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, endMonthIdxForQ), 0);
 
     return {
       name: q,
@@ -198,17 +225,15 @@ export const Dashboard: React.FC = () => {
 
   // 4. Chart 4: Savings by Fiscal Year
   const yearlySavingsData = fiscalYears.map(fy => {
-    const fyTarget = targets
-      .filter(t => t.fiscal_year === fy.fiscal_year && t.quarter !== 'Annual')
-      .reduce((sum, t) => sum + t.target_amount, 0);
+    const fyTarget = getTargetForPeriod(targets, fy.fiscal_year, 'All');
 
     const fyApproved = approvedProjects
       .filter(p => p.fiscal_year === fy.fiscal_year)
-      .reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
+      .reduce((sum, p) => sum + getProjectPeriodSavings(p, 11), 0);
     
     const fyOpen = openProjects
       .filter(p => p.fiscal_year === fy.fiscal_year)
-      .reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
+      .reduce((sum, p) => sum + getProjectPeriodSavings(p, 11), 0);
 
     return {
       name: fy.fiscal_year,

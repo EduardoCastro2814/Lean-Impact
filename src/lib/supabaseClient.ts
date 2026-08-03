@@ -4,8 +4,28 @@ import { createClient } from '@supabase/supabase-js';
 export const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
 export const supabaseAnonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
 
-// Always create the client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export const getFiscalMonthIndex = (dateStr: string): number => {
+  if (!dateStr) return 0;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 0;
+  const m = date.getMonth(); // 0 = Jan, 1 = Feb, ..., 11 = Dec
+  // Map so April = 0, May = 1, ..., March = 11
+  return m >= 3 ? m - 3 : m + 9;
+};
+
+export const getProjectPeriodSavings = (
+  p: { op_contribution: number; one_time_savings: number; approval_date?: string; created_date?: string },
+  endMonthIndex: number // 0 = Apr, 1 = May, ..., 11 = Mar
+): number => {
+  const dateStr = p.approval_date || p.created_date;
+  if (!dateStr) return 0;
+  const mProj = getFiscalMonthIndex(dateStr);
+  if (mProj > endMonthIndex) return 0;
+  const activeMonths = endMonthIndex - mProj + 1;
+  return (p.op_contribution * activeMonths) + p.one_time_savings;
+};
 
 export interface ProjectApproved {
   id: string;

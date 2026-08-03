@@ -22,7 +22,7 @@ import {
   ReferenceLine
 } from 'recharts';
 import html2canvas from 'html2canvas';
-import { dbService, getFyDisplayLabel } from '../lib/supabaseClient';
+import { dbService, getFyDisplayLabel, getFiscalMonthIndex, getProjectPeriodSavings } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen, SavingsTarget } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
@@ -81,19 +81,23 @@ export const Forecast: React.FC = () => {
   const approvedFiltered = approvedProjects.filter(p => p.fiscal_year === fiscalYear);
   const openFiltered = openProjects.filter(p => p.fiscal_year === fiscalYear);
 
-  // Calculate annual target
-  const yearTargets = targets.filter(t => t.fiscal_year === fiscalYear);
-  const annualTarget = yearTargets.reduce((sum, t) => sum + t.target_amount, 0);
+  // Calculate annual target (milestone Q4 or max)
+  const getTargetForPeriod = (targetsList: SavingsTarget[], fy: string): number => {
+    const yearTargets = targetsList.filter(t => t.fiscal_year === fy);
+    if (yearTargets.length === 0) return 0;
+    const q4Target = yearTargets.find(t => t.quarter === 'Q4');
+    if (q4Target) return q4Target.target_amount;
+    const annualTarget = yearTargets.find(t => t.quarter === 'Annual');
+    if (annualTarget) return annualTarget.target_amount;
+    return Math.max(...yearTargets.map(t => t.target_amount));
+  };
+  const annualTarget = getTargetForPeriod(targets, fiscalYear);
 
-  // Approved realized savings
-  const realizedSavings = approvedFiltered.reduce((sum, p) => {
-    return sum + (p.op_contribution + p.one_time_savings);
-  }, 0);
+  // Approved realized savings (full year recurring OP + One Time)
+  const realizedSavings = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, 11), 0);
 
-  // Open potential savings
-  const potentialSavings = openFiltered.reduce((sum, p) => {
-    return sum + (p.op_contribution + p.one_time_savings);
-  }, 0);
+  // Open potential savings (full year recurring OP + One Time)
+  const potentialSavings = openFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, 11), 0);
 
   const expectedFinalSavings = realizedSavings + potentialSavings;
   const rawGap = annualTarget - expectedFinalSavings;
@@ -122,35 +126,34 @@ export const Forecast: React.FC = () => {
     }
   ];
 
-  // Monthly breakdown for cumulative line chart
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-  let approvedCumulative = 0;
-  let expectedCumulative = 0;
+  // Monthly breakdown for cumulative line chart (Fiscal Year: April to March)
+  const fiscalMonths = [
+    { name: 'Apr', index: 3 },
+    { name: 'May', index: 4 },
+    { name: 'Jun', index: 5 },
+    { name: 'Jul', index: 6 },
+    { name: 'Aug', index: 7 },
+    { name: 'Sep', index: 8 },
+    { name: 'Oct', index: 9 },
+    { name: 'Nov', index: 10 },
+    { name: 'Dec', index: 11 },
+    { name: 'Jan', index: 0 },
+    { name: 'Feb', index: 1 },
+    { name: 'Mar', index: 2 }
+  ];
 
-  const monthlyCumulativeData = months.map((month, idx) => {
-    // Approved
-    const approvedInMonth = approvedFiltered.filter(p => new Date(p.approval_date).getMonth() === idx);
-    const approvedSum = approvedInMonth.reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
-    approvedCumulative += approvedSum;
+  const monthlyCumulativeData = fiscalMonths.map((m, monthIdx) => {
+    // Approved cumulative up to this month
+    const approvedCumulative = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
 
-    // Open
-    const openInMonth = openFiltered.filter(p => {
-      const date = p.completion_date || p.created_date;
-      return new Date(date).getMonth() === idx;
-    });
-    const potentialSum = openInMonth.reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
-    expectedCumulative += (approvedSum + potentialSum);
+    // Expected cumulative (Approved + Potential) up to this month
+    const expectedCumulative = approvedCumulative + openFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
 
-    // Target cumulative curve
-    // Assuming linear target distribution across quarters:
-    // targets contains quarterly targets. We can find which quarter this month belongs to and sum target.
-    // To make it simple and visual, let's distribute the annual target linearly:
-    const monthlyTargetShare = annualTarget / 12;
-    const targetCumulative = monthlyTargetShare * (idx + 1);
+    // Target cumulative curve distributed linearly
+    const targetCumulative = (annualTarget / 12) * (monthIdx + 1);
 
     return {
-      name: month,
+      name: m.name,
       'Realized Savings': approvedCumulative,
       'Projected Savings': expectedCumulative,
       'Target Curve': targetCumulative
