@@ -318,11 +318,23 @@ export const Configuration: React.FC = () => {
 
           // Mapped indices
           const findColIdx = (syns: string[]): number => {
+            // First pass: try exact match
+            const exactIdx = detectedHeaders.findIndex(h => {
+              const normalized = h.toLowerCase().replace(/[^a-z0-9]/g, '');
+              return syns.some(syn => {
+                const normalizedSyn = syn.toLowerCase().replace(/[^a-z0-9]/g, '');
+                return normalized === normalizedSyn;
+              });
+            });
+            if (exactIdx !== -1) return exactIdx;
+
+            // Second pass: try partial match, but exclude short terms like "id" or "type" to avoid false matches
             return detectedHeaders.findIndex(h => {
               const normalized = h.toLowerCase().replace(/[^a-z0-9]/g, '');
               return syns.some(syn => {
                 const normalizedSyn = syn.toLowerCase().replace(/[^a-z0-9]/g, '');
-                return normalized === normalizedSyn || normalized.includes(normalizedSyn);
+                if (normalizedSyn === 'id' || normalizedSyn === 'type') return false;
+                return normalized.includes(normalizedSyn);
               });
             });
           };
