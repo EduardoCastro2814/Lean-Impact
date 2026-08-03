@@ -20,6 +20,8 @@ export const App: React.FC = () => {
       const active = data.find(fy => fy.active);
       if (active) {
         setActiveFy(active.fiscal_year);
+      } else if (data.length > 0) {
+        setActiveFy(data[0].fiscal_year);
       }
     } catch (e) {
       console.error(e);

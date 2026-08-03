@@ -392,172 +392,218 @@ export const Dashboard: React.FC = () => {
 
         </div>
 
-        {/* SECTION 2: OVERALL SAVINGS DETAILED BREAKDOWN */}
-        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '12px', display: 'block' }}>
-          💼 Overall Savings Detailed Breakdown (Realized + Potential)
+        {/* SECTION 2: SAVINGS IMPACT DETAILED BREAKDOWN */}
+        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '16px', display: 'block' }}>
+          💼 Savings & Impact Detailed Breakdown (Realized + Potential)
         </span>
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-          
-          <div className="kpi-widget" style={{ backgroundColor: '#F0FDF4', borderLeft: '3px solid #16A34A' }}>
-            <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#14532D' }}>Target-Qualifying Savings</span>
-              <span className="kpi-value" style={{ color: '#16A34A' }}>{formatCurrency(totalSavings)}</span>
-              <span className="kpi-subtext">OP + One-Time Savings</span>
+
+        {/* Group A: Financial Savings */}
+        <div style={{ marginTop: '12px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            💰 Financial Savings (Counts toward Target Achievement)
+          </span>
+          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div className="kpi-widget" style={{ backgroundColor: '#F0FDF4', borderLeft: '4px solid #16A34A' }}>
+              <div className="kpi-details">
+                <span className="kpi-title" style={{ color: '#14532D' }}>Target-Qualifying Savings</span>
+                <span className="kpi-value" style={{ color: '#16A34A' }}>{formatCurrency(totalSavings)}</span>
+                <span className="kpi-subtext">OP + One-Time Savings</span>
+              </div>
+            </div>
+            <div className="kpi-widget">
+              <div className="kpi-details">
+                <span className="kpi-title">OP Contribution</span>
+                <span className="kpi-value">{formatCurrency(totalOp)}</span>
+                <span className="kpi-subtext">Operational savings</span>
+              </div>
+            </div>
+            <div className="kpi-widget">
+              <div className="kpi-details">
+                <span className="kpi-title">One Time Savings</span>
+                <span className="kpi-value">{formatCurrency(totalOneTime)}</span>
+                <span className="kpi-subtext">One-time event savings</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">OP Contribution</span>
-              <span className="kpi-value">{formatCurrency(totalOp)}</span>
-              <span className="kpi-subtext">Target-qualifying savings</span>
+        {/* Group B: Operational Impact */}
+        <div style={{ marginTop: '20px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            ⚙️ Operational Impact (Informational Metrics Only)
+          </span>
+          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
+              <div className="kpi-details">
+                <span className="kpi-title">Soft Savings</span>
+                <span className="kpi-value">{formatCurrency(totalSoft)}</span>
+                <span className="kpi-subtext">Methodology savings</span>
+              </div>
+            </div>
+            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
+              <div className="kpi-details">
+                <span className="kpi-title">Inventory ARAP Savings</span>
+                <span className="kpi-value">{formatCurrency(totalInventory)}</span>
+                <span className="kpi-subtext">Inventory reduction</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
-            <div className="kpi-details">
-              <span className="kpi-title">Soft Savings</span>
-              <span className="kpi-value">{formatCurrency(totalSoft)}</span>
-              <span className="kpi-subtext">Informational metric only</span>
+        {/* Group C: Productivity Impact */}
+        <div style={{ marginTop: '20px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            👥 Productivity Impact (Non-Financial)
+          </span>
+          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '4px solid #0284C7' }}>
+              <div className="kpi-details">
+                <span className="kpi-title" style={{ color: '#0369A1' }}>FTE Headcount Savings</span>
+                <span className="kpi-value" style={{ color: '#0284C7' }}>{totalFte.toFixed(1)} FTEs</span>
+                <span className="kpi-subtext">Excludes from monetary calculations</span>
+              </div>
             </div>
           </div>
-
-          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
-            <div className="kpi-details">
-              <span className="kpi-title">Inventory ARAP Savings</span>
-              <span className="kpi-value">{formatCurrency(totalInventory)}</span>
-              <span className="kpi-subtext">Informational metric only</span>
-            </div>
-          </div>
-
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">One Time Savings</span>
-              <span className="kpi-value">{formatCurrency(totalOneTime)}</span>
-              <span className="kpi-subtext">Target-qualifying savings</span>
-            </div>
-          </div>
-
-          <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '3px solid #0284C7' }}>
-            <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#0369A1' }}>FTE Headcount Savings</span>
-              <span className="kpi-value" style={{ color: '#0284C7' }}>{totalFte.toFixed(1)} FTEs</span>
-              <span className="kpi-subtext">Non-financial metric</span>
-            </div>
-          </div>
-
         </div>
 
         {/* SECTION 3: APPROVED PROJECTS (REALIZED BREAKDOWN) */}
-        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '12px', display: 'block' }}>
+        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '24px', display: 'block' }}>
           ✅ Approved Projects (Realized Savings Breakdown)
         </span>
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-          
-          <div className="kpi-widget" style={{ backgroundColor: '#F0FDF4', borderLeft: '3px solid #16A34A' }}>
-            <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#14532D' }}>Realized Savings Total</span>
-              <span className="kpi-value" style={{ color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
-              <span className="kpi-subtext">OP + One-Time approved</span>
+        <div style={{ marginTop: '12px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            💰 Financial Savings (Realized)
+          </span>
+          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div className="kpi-widget" style={{ backgroundColor: '#F0FDF4', borderLeft: '4px solid #16A34A' }}>
+              <div className="kpi-details">
+                <span className="kpi-title" style={{ color: '#14532D' }}>Realized Savings Total</span>
+                <span className="kpi-value" style={{ color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
+                <span className="kpi-subtext">OP + One-Time approved</span>
+              </div>
+            </div>
+            <div className="kpi-widget">
+              <div className="kpi-details">
+                <span className="kpi-title">OP Contribution Total</span>
+                <span className="kpi-value">{formatCurrency(realizedOp)}</span>
+                <span className="kpi-subtext">Operational actuals</span>
+              </div>
+            </div>
+            <div className="kpi-widget">
+              <div className="kpi-details">
+                <span className="kpi-title">One Time Savings Total</span>
+                <span className="kpi-value">{formatCurrency(realizedOneTime)}</span>
+                <span className="kpi-subtext">One-time actuals</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">OP Contribution Total</span>
-              <span className="kpi-value">{formatCurrency(realizedOp)}</span>
-              <span className="kpi-subtext">Operational actuals</span>
+        <div style={{ marginTop: '20px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            ⚙️ Operational Impact (Realized Informational)
+          </span>
+          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
+              <div className="kpi-details">
+                <span className="kpi-title">Soft Savings Total</span>
+                <span className="kpi-value">{formatCurrency(realizedSoft)}</span>
+                <span className="kpi-subtext">Soft savings actuals</span>
+              </div>
+            </div>
+            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
+              <div className="kpi-details">
+                <span className="kpi-title">Inventory Savings Total</span>
+                <span className="kpi-value">{formatCurrency(realizedInventory)}</span>
+                <span className="kpi-subtext">Inventory actuals</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
-            <div className="kpi-details">
-              <span className="kpi-title">Soft Savings Total</span>
-              <span className="kpi-value">{formatCurrency(realizedSoft)}</span>
-              <span className="kpi-subtext">Informational metric only</span>
+        <div style={{ marginTop: '20px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            👥 Productivity Impact (Realized Non-Financial)
+          </span>
+          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '4px solid #0284C7' }}>
+              <div className="kpi-details">
+                <span className="kpi-title" style={{ color: '#0369A1' }}>FTE Savings Total</span>
+                <span className="kpi-value" style={{ color: '#0284C7' }}>{realizedFte.toFixed(1)} FTEs</span>
+                <span className="kpi-subtext">FTE reductions actuals</span>
+              </div>
             </div>
           </div>
-
-          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
-            <div className="kpi-details">
-              <span className="kpi-title">Inventory Savings Total</span>
-              <span className="kpi-value">{formatCurrency(realizedInventory)}</span>
-              <span className="kpi-subtext">Informational metric only</span>
-            </div>
-          </div>
-
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">One Time Savings Total</span>
-              <span className="kpi-value">{formatCurrency(realizedOneTime)}</span>
-              <span className="kpi-subtext">One-time actuals</span>
-            </div>
-          </div>
-
-          <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '3px solid #0284C7' }}>
-            <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#0369A1' }}>FTE Savings Total</span>
-              <span className="kpi-value" style={{ color: '#0284C7' }}>{realizedFte.toFixed(1)} FTEs</span>
-              <span className="kpi-subtext">Non-financial metric</span>
-            </div>
-          </div>
-
         </div>
 
         {/* SECTION 4: OPEN PROJECTS (POTENTIAL BREAKDOWN) */}
-        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '12px', display: 'block' }}>
+        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '24px', display: 'block' }}>
           ⏳ Open Pipeline (Potential Savings Breakdown)
         </span>
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-          
-          <div className="kpi-widget" style={{ backgroundColor: '#EFF6FF', borderLeft: '3px solid #2563EB' }}>
-            <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#1E3A8A' }}>Potential Total Savings</span>
-              <span className="kpi-value" style={{ color: '#2563EB' }}>{formatCurrency(potentialSavings)}</span>
-              <span className="kpi-subtext">OP + One-Time open</span>
+        <div style={{ marginTop: '12px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            💰 Financial Savings (Potential)
+          </span>
+          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div className="kpi-widget" style={{ backgroundColor: '#EFF6FF', borderLeft: '4px solid #2563EB' }}>
+              <div className="kpi-details">
+                <span className="kpi-title" style={{ color: '#1E3A8A' }}>Potential Total Savings</span>
+                <span className="kpi-value" style={{ color: '#2563EB' }}>{formatCurrency(potentialSavings)}</span>
+                <span className="kpi-subtext">OP + One-Time open</span>
+              </div>
+            </div>
+            <div className="kpi-widget">
+              <div className="kpi-details">
+                <span className="kpi-title">Potential OP</span>
+                <span className="kpi-value">{formatCurrency(potentialOp)}</span>
+                <span className="kpi-subtext">OP contributions pipeline</span>
+              </div>
+            </div>
+            <div className="kpi-widget">
+              <div className="kpi-details">
+                <span className="kpi-title">Potential One Time Savings</span>
+                <span className="kpi-value">{formatCurrency(potentialOneTime)}</span>
+                <span className="kpi-subtext">One-time pipeline savings</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Potential OP</span>
-              <span className="kpi-value">{formatCurrency(potentialOp)}</span>
-              <span className="kpi-subtext">OP contributions pipeline</span>
+        <div style={{ marginTop: '20px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            ⚙️ Operational Impact (Potential Informational)
+          </span>
+          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
+              <div className="kpi-details">
+                <span className="kpi-title">Potential Soft Savings</span>
+                <span className="kpi-value">{formatCurrency(potentialSoft)}</span>
+                <span className="kpi-subtext">Soft pipeline savings</span>
+              </div>
+            </div>
+            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
+              <div className="kpi-details">
+                <span className="kpi-title">Potential Inventory Savings</span>
+                <span className="kpi-value">{formatCurrency(potentialInventory)}</span>
+                <span className="kpi-subtext">Inventory pipeline reduction</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
-            <div className="kpi-details">
-              <span className="kpi-title">Potential Soft Savings</span>
-              <span className="kpi-value">{formatCurrency(potentialSoft)}</span>
-              <span className="kpi-subtext">Informational metric only</span>
+        <div style={{ marginTop: '20px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            👥 Productivity Impact (Potential Non-Financial)
+          </span>
+          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '4px solid #0284C7' }}>
+              <div className="kpi-details">
+                <span className="kpi-title" style={{ color: '#0369A1' }}>Potential FTE Savings</span>
+                <span className="kpi-value" style={{ color: '#0284C7' }}>{potentialFte.toFixed(1)} FTEs</span>
+                <span className="kpi-subtext">FTE pipeline reductions</span>
+              </div>
             </div>
           </div>
-
-          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
-            <div className="kpi-details">
-              <span className="kpi-title">Potential Inventory Savings</span>
-              <span className="kpi-value">{formatCurrency(potentialInventory)}</span>
-              <span className="kpi-subtext">Informational metric only</span>
-            </div>
-          </div>
-
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Potential One Time Savings</span>
-              <span className="kpi-value">{formatCurrency(potentialOneTime)}</span>
-              <span className="kpi-subtext">One-time pipeline savings</span>
-            </div>
-          </div>
-
-          <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '3px solid #0284C7' }}>
-            <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#0369A1' }}>Potential FTE Savings</span>
-              <span className="kpi-value" style={{ color: '#0284C7' }}>{potentialFte.toFixed(1)} FTEs</span>
-              <span className="kpi-subtext">Non-financial metric</span>
-            </div>
-          </div>
-
         </div>
 
         {/* Executive Savings Forecasting Gauge Card */}
