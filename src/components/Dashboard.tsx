@@ -102,7 +102,7 @@ export const Dashboard: React.FC = () => {
   const realizedInventory = approvedFiltered.reduce((sum, p) => sum + p.inventory_savings, 0);
   const realizedOneTime = approvedFiltered.reduce((sum, p) => sum + p.one_time_savings, 0);
   const realizedFte = approvedFiltered.reduce((sum, p) => sum + p.fte_savings, 0);
-  const realizedSavings = approvedFiltered.reduce((sum, p) => sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings), 0);
+  const realizedSavings = realizedOp + realizedOneTime;
 
   // Potential Breakdown (Open Projects)
   const potentialOp = openFiltered.reduce((sum, p) => sum + p.op_contribution, 0);
@@ -110,7 +110,7 @@ export const Dashboard: React.FC = () => {
   const potentialInventory = openFiltered.reduce((sum, p) => sum + p.inventory_savings, 0);
   const potentialOneTime = openFiltered.reduce((sum, p) => sum + p.one_time_savings, 0);
   const potentialFte = openFiltered.reduce((sum, p) => sum + p.fte_savings, 0);
-  const potentialSavings = openFiltered.reduce((sum, p) => sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings), 0);
+  const potentialSavings = potentialOp + potentialOneTime;
 
   // Overall Breakdown (Total Savings)
   const totalOp = realizedOp + potentialOp;
@@ -182,11 +182,11 @@ export const Dashboard: React.FC = () => {
     
     const qApproved = approvedProjects
       .filter(p => p.fiscal_year === fiscalYear && p.fiscal_quarter === q)
-      .reduce((sum, p) => sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings), 0);
+      .reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
     
     const qOpen = openProjects
       .filter(p => p.fiscal_year === fiscalYear && p.fiscal_quarter === q)
-      .reduce((sum, p) => sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings), 0);
+      .reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
 
     return {
       name: q,
@@ -204,11 +204,11 @@ export const Dashboard: React.FC = () => {
 
     const fyApproved = approvedProjects
       .filter(p => p.fiscal_year === fy.fiscal_year)
-      .reduce((sum, p) => sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings), 0);
+      .reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
     
     const fyOpen = openProjects
       .filter(p => p.fiscal_year === fy.fiscal_year)
-      .reduce((sum, p) => sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings), 0);
+      .reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
 
     return {
       name: fy.fiscal_year,
@@ -398,11 +398,11 @@ export const Dashboard: React.FC = () => {
         </span>
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
           
-          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #1F2937' }}>
+          <div className="kpi-widget" style={{ backgroundColor: '#F0FDF4', borderLeft: '3px solid #16A34A' }}>
             <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#1F2937' }}>Total Savings</span>
-              <span className="kpi-value">{formatCurrency(totalSavings)}</span>
-              <span className="kpi-subtext">Excludes FTE Savings</span>
+              <span className="kpi-title" style={{ color: '#14532D' }}>Target-Qualifying Savings</span>
+              <span className="kpi-value" style={{ color: '#16A34A' }}>{formatCurrency(totalSavings)}</span>
+              <span className="kpi-subtext">OP + One-Time Savings</span>
             </div>
           </div>
 
@@ -410,23 +410,23 @@ export const Dashboard: React.FC = () => {
             <div className="kpi-details">
               <span className="kpi-title">OP Contribution</span>
               <span className="kpi-value">{formatCurrency(totalOp)}</span>
-              <span className="kpi-subtext">Operational savings</span>
+              <span className="kpi-subtext">Target-qualifying savings</span>
             </div>
           </div>
 
-          <div className="kpi-widget">
+          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
             <div className="kpi-details">
               <span className="kpi-title">Soft Savings</span>
               <span className="kpi-value">{formatCurrency(totalSoft)}</span>
-              <span className="kpi-subtext">Methodology savings</span>
+              <span className="kpi-subtext">Informational metric only</span>
             </div>
           </div>
 
-          <div className="kpi-widget">
+          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
             <div className="kpi-details">
               <span className="kpi-title">Inventory ARAP Savings</span>
               <span className="kpi-value">{formatCurrency(totalInventory)}</span>
-              <span className="kpi-subtext">Inventory reduction</span>
+              <span className="kpi-subtext">Informational metric only</span>
             </div>
           </div>
 
@@ -434,15 +434,15 @@ export const Dashboard: React.FC = () => {
             <div className="kpi-details">
               <span className="kpi-title">One Time Savings</span>
               <span className="kpi-value">{formatCurrency(totalOneTime)}</span>
-              <span className="kpi-subtext">One-time event savings</span>
+              <span className="kpi-subtext">Target-qualifying savings</span>
             </div>
           </div>
 
-          <div className="kpi-widget" style={{ borderLeft: '3px solid #D97706' }}>
+          <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '3px solid #0284C7' }}>
             <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#D97706' }}>FTE Savings</span>
-              <span className="kpi-value" style={{ color: '#D97706' }}>{formatCurrency(totalFte)}</span>
-              <span className="kpi-subtext">Display only</span>
+              <span className="kpi-title" style={{ color: '#0369A1' }}>FTE Headcount Savings</span>
+              <span className="kpi-value" style={{ color: '#0284C7' }}>{totalFte.toFixed(1)} FTEs</span>
+              <span className="kpi-subtext">Non-financial metric</span>
             </div>
           </div>
 
@@ -458,7 +458,7 @@ export const Dashboard: React.FC = () => {
             <div className="kpi-details">
               <span className="kpi-title" style={{ color: '#14532D' }}>Realized Savings Total</span>
               <span className="kpi-value" style={{ color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
-              <span className="kpi-subtext">Approved projects sum</span>
+              <span className="kpi-subtext">OP + One-Time approved</span>
             </div>
           </div>
 
@@ -470,19 +470,19 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="kpi-widget">
+          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
             <div className="kpi-details">
               <span className="kpi-title">Soft Savings Total</span>
               <span className="kpi-value">{formatCurrency(realizedSoft)}</span>
-              <span className="kpi-subtext">Soft savings actuals</span>
+              <span className="kpi-subtext">Informational metric only</span>
             </div>
           </div>
 
-          <div className="kpi-widget">
+          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
             <div className="kpi-details">
               <span className="kpi-title">Inventory Savings Total</span>
               <span className="kpi-value">{formatCurrency(realizedInventory)}</span>
-              <span className="kpi-subtext">Inventory actuals</span>
+              <span className="kpi-subtext">Informational metric only</span>
             </div>
           </div>
 
@@ -494,11 +494,11 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="kpi-widget" style={{ borderLeft: '3px solid #D97706' }}>
+          <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '3px solid #0284C7' }}>
             <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#D97706' }}>FTE Savings Total</span>
-              <span className="kpi-value" style={{ color: '#D97706' }}>{formatCurrency(realizedFte)}</span>
-              <span className="kpi-subtext">Display only</span>
+              <span className="kpi-title" style={{ color: '#0369A1' }}>FTE Savings Total</span>
+              <span className="kpi-value" style={{ color: '#0284C7' }}>{realizedFte.toFixed(1)} FTEs</span>
+              <span className="kpi-subtext">Non-financial metric</span>
             </div>
           </div>
 
@@ -514,7 +514,7 @@ export const Dashboard: React.FC = () => {
             <div className="kpi-details">
               <span className="kpi-title" style={{ color: '#1E3A8A' }}>Potential Total Savings</span>
               <span className="kpi-value" style={{ color: '#2563EB' }}>{formatCurrency(potentialSavings)}</span>
-              <span className="kpi-subtext">Pipeline projects sum</span>
+              <span className="kpi-subtext">OP + One-Time open</span>
             </div>
           </div>
 
@@ -526,19 +526,19 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="kpi-widget">
+          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
             <div className="kpi-details">
               <span className="kpi-title">Potential Soft Savings</span>
               <span className="kpi-value">{formatCurrency(potentialSoft)}</span>
-              <span className="kpi-subtext">Soft pipeline savings</span>
+              <span className="kpi-subtext">Informational metric only</span>
             </div>
           </div>
 
-          <div className="kpi-widget">
+          <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '3px solid #6B7280' }}>
             <div className="kpi-details">
               <span className="kpi-title">Potential Inventory Savings</span>
               <span className="kpi-value">{formatCurrency(potentialInventory)}</span>
-              <span className="kpi-subtext">Inventory pipeline reduction</span>
+              <span className="kpi-subtext">Informational metric only</span>
             </div>
           </div>
 
@@ -550,11 +550,11 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="kpi-widget" style={{ borderLeft: '3px solid #D97706' }}>
+          <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '3px solid #0284C7' }}>
             <div className="kpi-details">
-              <span className="kpi-title" style={{ color: '#D97706' }}>Potential FTE Savings</span>
-              <span className="kpi-value" style={{ color: '#D97706' }}>{formatCurrency(potentialFte)}</span>
-              <span className="kpi-subtext">Display only</span>
+              <span className="kpi-title" style={{ color: '#0369A1' }}>Potential FTE Savings</span>
+              <span className="kpi-value" style={{ color: '#0284C7' }}>{potentialFte.toFixed(1)} FTEs</span>
+              <span className="kpi-subtext">Non-financial metric</span>
             </div>
           </div>
 

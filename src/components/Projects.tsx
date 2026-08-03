@@ -127,7 +127,8 @@ export const Projects: React.FC = () => {
   // Export Table to Excel
   const handleExportExcel = () => {
     const dataToExport = filteredProjects.map(p => {
-      const savings = p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings;
+      const targetSavings = p.op_contribution + p.one_time_savings;
+      const totalSavings = p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings;
       const dateLabel = activeTab === 'approved' ? 'Approval Date' : 'Created Date';
       const dateVal = activeTab === 'approved' ? p.approval_date : p.created_date;
 
@@ -149,7 +150,8 @@ export const Projects: React.FC = () => {
         'Soft Savings ($)': p.soft_savings,
         'Inventory Savings ($)': p.inventory_savings,
         'One-time Savings ($)': p.one_time_savings,
-        'Total Financial Savings ($)': savings,
+        'Target-Qualifying Savings ($)': targetSavings,
+        'Total Project Savings ($)': totalSavings,
         'FTE Savings (Headcount)': p.fte_savings
       };
     });
@@ -272,7 +274,7 @@ export const Projects: React.FC = () => {
                 <th>Leader</th>
                 <th>Facilitator</th>
                 <th>Status</th>
-                <th>Financial Savings</th>
+                <th>Savings (Target-Qualifying)</th>
                 <th>Area</th>
                 <th>Customer</th>
                 <th>Actions</th>
@@ -280,7 +282,7 @@ export const Projects: React.FC = () => {
             </thead>
             <tbody>
               {filteredProjects.map((p) => {
-                const savings = p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings;
+                const savings = p.op_contribution + p.one_time_savings;
                 return (
                   <tr key={p.id} onClick={() => setSelectedProject(p)}>
                     <td style={{ fontWeight: 700, color: '#111827' }}>{p.project_id}</td>
@@ -431,18 +433,28 @@ export const Projects: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', padding: '4px 8px' }}>
-                  <span style={{ fontWeight: 700, fontSize: '1rem', color: '#1F2937' }}>
-                    Total Financial Savings:
-                  </span>
-                  <span className="detail-value savings" style={{ fontSize: '1.25rem' }}>
-                    {formatCurrency(
-                      selectedProject.op_contribution +
-                      selectedProject.soft_savings +
-                      selectedProject.inventory_savings +
-                      selectedProject.one_time_savings
-                    )}
-                  </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', padding: '8px', backgroundColor: '#F3F4F6', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1F2937' }}>
+                      Target-Qualifying Savings (OP + One-Time):
+                    </span>
+                    <span className="detail-value savings" style={{ fontSize: '1.1rem', color: '#15803D' }}>
+                      {formatCurrency(selectedProject.op_contribution + selectedProject.one_time_savings)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #D1D5DB', paddingTop: '6px' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#4B5563' }}>
+                      Total Savings (Incl. Soft/Inventory):
+                    </span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#4B5563' }}>
+                      {formatCurrency(
+                        selectedProject.op_contribution +
+                        selectedProject.soft_savings +
+                        selectedProject.inventory_savings +
+                        selectedProject.one_time_savings
+                      )}
+                    </span>
+                  </div>
                 </div>
               </div>
 

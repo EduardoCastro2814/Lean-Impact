@@ -87,7 +87,7 @@ export const Facilitators: React.FC = () => {
     // Aggregate Approved
     approvedFiltered.forEach(p => {
       const name = p.facilitator || 'Unassigned';
-      const savings = p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings;
+      const savings = p.op_contribution + p.one_time_savings;
       
       if (!facilitatorsMap[name]) {
         facilitatorsMap[name] = {
@@ -106,7 +106,7 @@ export const Facilitators: React.FC = () => {
     // Aggregate Open
     openFiltered.forEach(p => {
       const name = p.facilitator || 'Unassigned';
-      const savings = p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings;
+      const savings = p.op_contribution + p.one_time_savings;
       
       if (!facilitatorsMap[name]) {
         facilitatorsMap[name] = {

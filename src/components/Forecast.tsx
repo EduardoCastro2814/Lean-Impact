@@ -87,12 +87,12 @@ export const Forecast: React.FC = () => {
 
   // Approved realized savings
   const realizedSavings = approvedFiltered.reduce((sum, p) => {
-    return sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings);
+    return sum + (p.op_contribution + p.one_time_savings);
   }, 0);
 
   // Open potential savings
   const potentialSavings = openFiltered.reduce((sum, p) => {
-    return sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings);
+    return sum + (p.op_contribution + p.one_time_savings);
   }, 0);
 
   const expectedFinalSavings = realizedSavings + potentialSavings;
@@ -131,7 +131,7 @@ export const Forecast: React.FC = () => {
   const monthlyCumulativeData = months.map((month, idx) => {
     // Approved
     const approvedInMonth = approvedFiltered.filter(p => new Date(p.approval_date).getMonth() === idx);
-    const approvedSum = approvedInMonth.reduce((sum, p) => sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings), 0);
+    const approvedSum = approvedInMonth.reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
     approvedCumulative += approvedSum;
 
     // Open
@@ -139,7 +139,7 @@ export const Forecast: React.FC = () => {
       const date = p.completion_date || p.created_date;
       return new Date(date).getMonth() === idx;
     });
-    const potentialSum = openInMonth.reduce((sum, p) => sum + (p.op_contribution + p.soft_savings + p.inventory_savings + p.one_time_savings), 0);
+    const potentialSum = openInMonth.reduce((sum, p) => sum + (p.op_contribution + p.one_time_savings), 0);
     expectedCumulative += (approvedSum + potentialSum);
 
     // Target cumulative curve
