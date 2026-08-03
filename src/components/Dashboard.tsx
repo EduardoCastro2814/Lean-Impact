@@ -138,7 +138,7 @@ export const Dashboard: React.FC = () => {
   // Realized Breakdown (Approved Projects)
   const realizedOp = approvedFiltered.reduce((sum, p) => {
     const mProj = getFiscalMonthIndex(p.approval_date);
-    return sum + (mProj <= endMonthIdx ? p.op_contribution * (endMonthIdx - mProj + 1) : 0);
+    return sum + (mProj <= endMonthIdx ? p.op_contribution * (12 - mProj) : 0);
   }, 0);
   const realizedOneTime = approvedFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.approval_date) <= endMonthIdx ? p.one_time_savings : 0), 0);
   
@@ -153,7 +153,7 @@ export const Dashboard: React.FC = () => {
   // Potential Breakdown (Open Projects)
   const potentialOp = openFiltered.reduce((sum, p) => {
     const mProj = getFiscalMonthIndex(p.created_date);
-    return sum + (mProj <= endMonthIdx ? p.op_contribution * (endMonthIdx - mProj + 1) : 0);
+    return sum + (mProj <= endMonthIdx ? p.op_contribution * (12 - mProj) : 0);
   }, 0);
   const potentialOneTime = openFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.created_date) <= endMonthIdx ? p.one_time_savings : 0), 0);
   const potentialSavings = potentialOp + potentialOneTime;
@@ -193,7 +193,10 @@ export const Dashboard: React.FC = () => {
     // Approved up to this month contributes OP
     const opSavings = approvedFiltered
       .filter(p => getFiscalMonthIndex(p.approval_date) <= monthIdx)
-      .reduce((sum, p) => sum + p.op_contribution, 0);
+      .reduce((sum, p) => {
+        const mProj = getFiscalMonthIndex(p.approval_date);
+        return sum + p.op_contribution * (12 - mProj);
+      }, 0);
 
     // Only approved in exactly this month contributes One Time, Soft, Inventory
     const currentMonthProjects = approvedFiltered.filter(p => getFiscalMonthIndex(p.approval_date) === monthIdx);

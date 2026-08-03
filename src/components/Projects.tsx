@@ -39,11 +39,8 @@ const getProjectSingleMonthSavings = (p: any, m: number): number => {
   const dateStr = p.approval_date || p.created_date;
   if (!dateStr) return 0;
   const mProj = getFiscalMonthIndex(dateStr);
-  if (mProj > m) return 0;
-  if (mProj === m) {
-    return Number(p.op_contribution) + Number(p.one_time_savings);
-  }
-  return Number(p.op_contribution);
+  if (mProj !== m) return 0;
+  return Number(p.op_contribution) * (12 - mProj) + Number(p.one_time_savings);
 };
 
 export const Projects: React.FC = () => {
@@ -180,7 +177,10 @@ export const Projects: React.FC = () => {
   }
 
   // Column Totals Calculations
-  const totalOp = projectsListWithRecon.reduce((sum, p) => sum + Number(p.op_contribution || 0), 0);
+  const totalOp = projectsListWithRecon.reduce((sum, p) => {
+    const mProj = getFiscalMonthIndex(p.approval_date || p.created_date);
+    return sum + Number(p.op_contribution || 0) * (12 - mProj);
+  }, 0);
   const totalOt = projectsListWithRecon.reduce((sum, p) => sum + Number(p.one_time_savings || 0), 0);
 
   const getMonthlyTotal = (m: number) => {
@@ -232,7 +232,7 @@ export const Projects: React.FC = () => {
         'Month': p.approval_date ? getFiscalMonthLabel(p.approval_date) : 'N/A',
         'Customer': p.customer || 'N/A',
         'Project ID': p.project_id,
-        'OP Contribution': p.op_contribution,
+        'OP Contribution': p.op_contribution * (12 - getFiscalMonthIndex(p.approval_date || p.created_date)),
         'One Time Savings': p.one_time_savings,
         'Apr': apr,
         'May': may,
@@ -405,7 +405,7 @@ export const Projects: React.FC = () => {
                 <td>{p.approval_date ? getFiscalMonthLabel(p.approval_date) : 'N/A'}</td>
                 <td>{p.customer || 'N/A'}</td>
                 <td style={{ fontWeight: 700 }}>{p.project_id}</td>
-                <td style={{ textAlign: 'right' }}>{formatCurrency(p.op_contribution)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(p.op_contribution * (12 - getFiscalMonthIndex(p.approval_date || p.created_date)))}</td>
                 <td style={{ textAlign: 'right' }}>{formatCurrency(p.one_time_savings)}</td>
                 
                 {/* Months */}

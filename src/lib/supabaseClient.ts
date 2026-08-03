@@ -24,8 +24,8 @@ export const getProjectPeriodSavings = (
   if (!dateStr) return 0;
   const mProj = getFiscalMonthIndex(dateStr);
   if (mProj > endMonthIndex) return 0;
-  const activeMonths = endMonthIndex - mProj + 1;
-  return (p.op_contribution * activeMonths) + p.one_time_savings;
+  const remainingMonths = 12 - mProj;
+  return (p.op_contribution * remainingMonths) + p.one_time_savings;
 };
 
 export interface ProjectApproved {
