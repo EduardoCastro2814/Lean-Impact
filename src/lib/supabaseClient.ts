@@ -305,12 +305,37 @@ export const dbService = {
   },
 
   async deleteFiscalYearCascade(id: string, fiscalYear: string): Promise<void> {
+    // 1. Fetch the active state of the FY being deleted
+    const { data: fyData } = await supabase
+      .from('fiscal_years')
+      .select('active')
+      .eq('id', id)
+      .single();
+    
+    const wasActive = fyData?.active;
+
+    // 2. Cascade update projects to null and delete targets
     await Promise.all([
       supabase.from('savings_targets').delete().eq('fiscal_year', fiscalYear),
-      supabase.from('projects_approved').delete().eq('fiscal_year', fiscalYear),
-      supabase.from('projects_open').delete().eq('fiscal_year', fiscalYear)
+      supabase.from('projects_approved').update({ fiscal_year: null, fiscal_quarter: null }).eq('fiscal_year', fiscalYear),
+      supabase.from('projects_open').update({ fiscal_year: null, fiscal_quarter: null }).eq('fiscal_year', fiscalYear)
     ]);
+
+    // 3. Delete the FY
     const { error } = await supabase.from('fiscal_years').delete().eq('id', id);
     if (error) throw error;
+
+    // 4. If it was active, set another FY to active
+    if (wasActive) {
+      const { data: list } = await supabase
+        .from('fiscal_years')
+        .select('id')
+        .order('fiscal_year', { ascending: true })
+        .limit(1);
+      
+      if (list && list.length > 0) {
+        await dbService.updateFiscalYearActive(list[0].id, true);
+      }
+    }
   },
 };

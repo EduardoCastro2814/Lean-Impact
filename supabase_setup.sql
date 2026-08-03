@@ -154,6 +154,24 @@ DROP TRIGGER IF EXISTS update_projects_open_updated_at ON projects_open;
 CREATE TRIGGER update_projects_open_updated_at BEFORE UPDATE ON projects_open 
     FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
+-- TRIGGER TO ENFORCE SINGLE ACTIVE FISCAL YEAR
+CREATE OR REPLACE FUNCTION handle_single_active_fiscal_year()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.active = true THEN
+        UPDATE fiscal_years SET active = false WHERE id <> NEW.id AND active = true;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_single_active_fiscal_year ON fiscal_years;
+CREATE TRIGGER trg_single_active_fiscal_year
+    BEFORE INSERT OR UPDATE OF active ON fiscal_years
+    FOR EACH ROW
+    WHEN (NEW.active = true AND (OLD.active IS NULL OR OLD.active = false))
+    EXECUTE FUNCTION handle_single_active_fiscal_year();
+
 -- 9. PERFORMANCE INDEXES
 CREATE INDEX IF NOT EXISTS idx_approved_type ON projects_approved(project_type);
 CREATE INDEX IF NOT EXISTS idx_approved_facilitator ON projects_approved(facilitator);
