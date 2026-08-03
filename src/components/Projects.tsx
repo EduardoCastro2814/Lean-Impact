@@ -55,6 +55,89 @@ export const Projects: React.FC = () => {
   // Search query
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Synchronized horizontal scrollbars
+  const topScrollRef = React.useRef<HTMLDivElement>(null);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+  const [scrollWidth, setScrollWidth] = useState(0);
+
+  const expandedTopScrollRef = React.useRef<HTMLDivElement>(null);
+  const expandedTableContainerRef = React.useRef<HTMLDivElement>(null);
+  const [expandedScrollWidth, setExpandedScrollWidth] = useState(0);
+
+  const syncScrollTable = (e: any) => {
+    const target = e.target;
+    if (topScrollRef.current && Math.abs(topScrollRef.current.scrollLeft - target.scrollLeft) > 1) {
+      topScrollRef.current.scrollLeft = target.scrollLeft;
+    }
+  };
+
+  const syncScrollTop = (e: any) => {
+    const target = e.target;
+    if (tableContainerRef.current && Math.abs(tableContainerRef.current.scrollLeft - target.scrollLeft) > 1) {
+      tableContainerRef.current.scrollLeft = target.scrollLeft;
+    }
+  };
+
+  const syncScrollExpandedTable = (e: any) => {
+    const target = e.target;
+    if (expandedTopScrollRef.current && Math.abs(expandedTopScrollRef.current.scrollLeft - target.scrollLeft) > 1) {
+      expandedTopScrollRef.current.scrollLeft = target.scrollLeft;
+    }
+  };
+
+  const syncScrollExpandedTop = (e: any) => {
+    const target = e.target;
+    if (expandedTableContainerRef.current && Math.abs(expandedTableContainerRef.current.scrollLeft - target.scrollLeft) > 1) {
+      expandedTableContainerRef.current.scrollLeft = target.scrollLeft;
+    }
+  };
+
+  useEffect(() => {
+    if (loading) return;
+    const updateWidth = () => {
+      if (tableContainerRef.current) {
+        setScrollWidth(tableContainerRef.current.scrollWidth);
+      }
+    };
+    const timer = setTimeout(updateWidth, 100);
+    window.addEventListener('resize', updateWidth);
+    
+    let observer: ResizeObserver | null = null;
+    if (tableContainerRef.current) {
+      observer = new ResizeObserver(updateWidth);
+      observer.observe(tableContainerRef.current);
+    }
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateWidth);
+      if (observer) observer.disconnect();
+    };
+  }, [loading, activeTab, approvedProjects, openProjects]);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    const updateWidth = () => {
+      if (expandedTableContainerRef.current) {
+        setExpandedScrollWidth(expandedTableContainerRef.current.scrollWidth);
+      }
+    };
+    const timer = setTimeout(updateWidth, 100);
+    window.addEventListener('resize', updateWidth);
+    
+    let observer: ResizeObserver | null = null;
+    if (expandedTableContainerRef.current) {
+      observer = new ResizeObserver(updateWidth);
+      observer.observe(expandedTableContainerRef.current);
+    }
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateWidth);
+      if (observer) observer.disconnect();
+    };
+  }, [isExpanded, activeTab, approvedProjects, openProjects]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -136,32 +219,7 @@ export const Projects: React.FC = () => {
     return matchesSearch && matchesWorkshop && matchesFacilitator && matchesLeader && matchesCustomer && matchesType && matchesMonth;
   });
 
-  // Append Q1 FY27 reconciliation row when approved tab is selected for FY27
-  const projectsListWithRecon = [...filteredProjects];
-  if (fiscalYear === 'FY27' && activeTab === 'approved') {
-    projectsListWithRecon.push({
-      id: 'RECON-FY27-Q1',
-      project_id: 'RECON-FY27-Q1',
-      project_title: 'Finance Spreadsheet Reconciliation Adjustment',
-      workshop: 'Reconciliation',
-      project_type: 'Other',
-      leader: 'Finance',
-      facilitator: 'Finance',
-      approval_date: '2026-06-30',
-      completion_date: '2026-06-30',
-      status: 'Approved',
-      op_contribution: 0,
-      one_time_savings: 9528.00,
-      soft_savings: 0,
-      inventory_savings: 0,
-      fte_savings: 0,
-      total_savings: 9528.00,
-      functional_area: 'Finance',
-      customer: 'N/A',
-      fiscal_year: 'FY27',
-      fiscal_quarter: 'Q1'
-    });
-  }
+  const projectsListWithRecon = filteredProjects;
 
   // Column Totals Calculations
   const totalOp = projectsListWithRecon.reduce((sum, p) => {
@@ -652,9 +710,43 @@ export const Projects: React.FC = () => {
           ))}
         </div>
       ) : projectsListWithRecon.length > 0 ? (
-        <div className="table-container" style={{ overflow: 'auto', maxHeight: '600px', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
-          {renderWaterfallTable()}
-        </div>
+        <>
+          {/* Top scrollbar */}
+          <div 
+            ref={topScrollRef}
+            onScroll={syncScrollTop}
+            style={{ 
+              overflowX: 'auto', 
+              overflowY: 'hidden', 
+              width: '100%', 
+              maxWidth: '100%',
+              height: '14px', 
+              backgroundColor: '#F9FAFB',
+              border: '1px solid #E5E7EB',
+              borderBottom: 'none',
+              borderRadius: '8px 8px 0 0',
+              zIndex: 10
+            }}
+          >
+            <div style={{ width: `${scrollWidth}px`, height: '1px' }} />
+          </div>
+          
+          <div 
+            ref={tableContainerRef}
+            onScroll={syncScrollTable}
+            className="table-container" 
+            style={{ 
+              overflow: 'auto', 
+              maxHeight: '600px', 
+              width: '100%',
+              maxWidth: '100%',
+              border: '1px solid #E5E7EB', 
+              borderRadius: '0 0 8px 8px' 
+            }}
+          >
+            {renderWaterfallTable()}
+          </div>
+        </>
       ) : (
         <div className="card" style={{ textAlign: 'center', padding: '48px', color: '#6B7280' }}>
           <Briefcase size={40} style={{ margin: '0 auto 12px', display: 'block', color: '#9CA3AF' }} />
@@ -810,7 +902,8 @@ export const Projects: React.FC = () => {
       {/* Expanded Table Fullscreen Overlay Modal */}
       {isExpanded && (
         <div 
-          style={{
+          className="modal-overlay" 
+          style={{ 
             position: 'fixed',
             top: 0,
             left: 0,
@@ -820,16 +913,14 @@ export const Projects: React.FC = () => {
             zIndex: 99999,
             display: 'flex',
             justifyContent: 'center',
-            alignItems: 'center',
-            padding: '20px'
+            alignItems: 'center'
           }}
         >
           <div 
             style={{
               backgroundColor: '#FFFFFF',
-              width: '95vw',
-              height: '95vh',
-              borderRadius: '16px',
+              width: '100vw',
+              height: '100vh',
               padding: '24px',
               display: 'flex',
               flexDirection: 'column',
@@ -857,13 +948,36 @@ export const Projects: React.FC = () => {
               </div>
             </div>
 
+            {/* Synchronized top scrollbar inside modal */}
+            {projectsListWithRecon.length > 0 && (
+              <div 
+                ref={expandedTopScrollRef}
+                onScroll={syncScrollExpandedTop}
+                style={{ 
+                  overflowX: 'auto', 
+                  overflowY: 'hidden', 
+                  width: '100%', 
+                  maxWidth: '100%',
+                  height: '14px', 
+                  backgroundColor: '#F9FAFB',
+                  border: '1px solid #E5E7EB',
+                  borderBottom: 'none',
+                  borderRadius: '8px 8px 0 0',
+                  zIndex: 10
+                }}
+              >
+                <div style={{ width: `${expandedScrollWidth}px`, height: '1px' }} />
+              </div>
+            )}
+
             <div 
+              ref={expandedTableContainerRef}
+              onScroll={syncScrollExpandedTable}
               style={{ 
                 flex: 1, 
-                overflowX: 'auto', 
-                overflowY: 'auto', 
+                overflow: 'auto', 
                 border: '1px solid #E5E7EB', 
-                borderRadius: '8px' 
+                borderRadius: projectsListWithRecon.length > 0 ? '0 0 8px 8px' : '8px' 
               }}
             >
               {renderWaterfallTable()}

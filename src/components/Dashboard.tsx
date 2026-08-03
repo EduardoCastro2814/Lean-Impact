@@ -145,11 +145,6 @@ export const Dashboard: React.FC = () => {
   // Base approved realized savings
   let realizedSavings = realizedOp + realizedOneTime;
 
-  // Apply spreadsheet adjustment of $9,528.00 for Q1 FY27 onwards (June index 2 onwards)
-  if (fiscalYear === 'FY27' && endMonthIdx >= 2) {
-    realizedSavings += 9528.00;
-  }
-
   // Potential Breakdown (Open Projects)
   const potentialOp = openFiltered.reduce((sum, p) => {
     const mProj = getFiscalMonthIndex(p.created_date);
@@ -221,10 +216,7 @@ export const Dashboard: React.FC = () => {
     // Milestone targets (non-summing)
     const qTarget = getTargetForPeriod(targets, fiscalYear, q);
 
-    let qApproved = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, endMonthIdxForQ), 0);
-    if (fiscalYear === 'FY27' && endMonthIdxForQ >= 2) {
-      qApproved += 9528.00;
-    }
+    const qApproved = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, endMonthIdxForQ), 0);
     const qOpen = openFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, endMonthIdxForQ), 0);
 
     return {
@@ -241,11 +233,6 @@ export const Dashboard: React.FC = () => {
     const targetVal = getTargetForPeriod(targets, fiscalYear, q);
     
     let actualVal = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
-    
-    // Apply Q1 spreadsheet adjustment of $9,528.00 from June (index 2) onwards
-    if (fiscalYear === 'FY27' && monthIdx >= 2) {
-      actualVal += 9528.00;
-    }
 
     const potentialVal = openFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
     const forecastVal = actualVal + potentialVal;
@@ -863,8 +850,7 @@ export const Dashboard: React.FC = () => {
                   { id: 'SGA-GDL-25-00057', title: 'DEK programs by vendor', month: 'April 2026', op: 0, ot: 0, used: 0, ignored: 0 },
                   { id: 'SGA-GDL-26-00031', title: 'AOI CHANGE PART NUMBER', month: 'June 2026', op: 0, ot: 0, used: 0, ignored: 0 },
                   { id: 'SGA-GDL-25-00029', title: 'RMA Reinjection, adjustment and Validation...', month: 'June 2026', op: 0, ot: 0, used: 0, ignored: 0 },
-                  { id: 'SGA-GDL-26-00039', title: 'STATION ASSIGMENT PENDING', month: 'June 2026', op: 0, ot: 0, used: 0, ignored: 0 },
-                  { id: 'RECON-FY27-Q1', title: 'Finance Spreadsheet Reconciliation Adjustment', month: 'N/A', op: 0, ot: 9528.00, used: 9528.00, ignored: 0 }
+                  { id: 'SGA-GDL-26-00039', title: 'STATION ASSIGMENT PENDING', month: 'June 2026', op: 0, ot: 0, used: 0, ignored: 0 }
                 ].map((row, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #E5E7EB', backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }}>
                     <td style={{ padding: '8px 14px', fontWeight: 600 }}>{row.id}</td>
