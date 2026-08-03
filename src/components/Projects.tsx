@@ -6,10 +6,12 @@ import {
   X, 
   Calendar,
   User,
-  Briefcase
+  Briefcase,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { dbService, getProjectPeriodSavings } from '../lib/supabaseClient';
+import { dbService, getProjectPeriodSavings, getFiscalMonthIndex } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
@@ -20,14 +22,43 @@ const formatCurrency = (val: number) => {
   }).format(val);
 };
 
+const getFiscalMonthLabel = (dateStr: string): string => {
+  if (!dateStr) return 'N/A';
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const cleanDate = dateStr.substring(0, 10);
+  const parts = cleanDate.split('-');
+  if (parts.length < 2) return 'N/A';
+  const m = parseInt(parts[1], 10) - 1;
+  return monthNames[m] || 'N/A';
+};
+
+const getProjectSingleMonthSavings = (p: any, m: number): number => {
+  const dateStr = p.approval_date || p.created_date;
+  if (!dateStr) return 0;
+  const mProj = getFiscalMonthIndex(dateStr);
+  if (mProj > m) return 0;
+  if (mProj === m) {
+    return Number(p.op_contribution) + Number(p.one_time_savings);
+  }
+  return Number(p.op_contribution);
+};
+
 export const Projects: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'approved' | 'open'>('approved');
   const [approvedProjects, setApprovedProjects] = useState<ProjectApproved[]>([]);
   const [openProjects, setOpenProjects] = useState<ProjectOpen[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fiscalYear, setFiscalYear] = useState('FY27');
+  const [fiscalYears, setFiscalYears] = useState<any[]>([]);
 
   // Selected Project for details modal
   const [selectedProject, setSelectedProject] = useState<ProjectApproved | ProjectOpen | null>(null);
+  
+  // Table expansion state
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Filter states
   const [filterWorkshop, setFilterWorkshop] = useState('');
@@ -43,12 +74,22 @@ export const Projects: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [approved, open] = await Promise.all([
+      const [approved, open, fyList] = await Promise.all([
         dbService.getProjectsApproved(),
-        dbService.getProjectsOpen()
+        dbService.getProjectsOpen(),
+        dbService.getFiscalYears()
       ]);
       setApprovedProjects(approved);
       setOpenProjects(open);
+      setFiscalYears(fyList);
+
+      // Default to active fiscal year
+      const activeFy = fyList.find(fy => fy.active);
+      if (activeFy) {
+        setFiscalYear(activeFy.fiscal_year);
+      } else if (fyList.length > 0) {
+        setFiscalYear(fyList[0].fiscal_year);
+      }
     } catch (e) {
       console.error('Error loading projects', e);
     } finally {
@@ -64,8 +105,9 @@ export const Projects: React.FC = () => {
     };
   }, []);
 
-  // Get unique values for filters based on active dataset
-  const activeDataset = activeTab === 'approved' ? approvedProjects : openProjects;
+  // Filter datasets by selected Fiscal Year first
+  const activeDataset = (activeTab === 'approved' ? approvedProjects : openProjects)
+    .filter(p => p.fiscal_year === fiscalYear);
 
   const workshops = Array.from(new Set(activeDataset.map(p => p.workshop))).filter(Boolean).sort();
   const facilitators = Array.from(new Set(activeDataset.map(p => p.facilitator))).filter(Boolean).sort();
@@ -74,23 +116,22 @@ export const Projects: React.FC = () => {
   const types = Array.from(new Set(activeDataset.map(p => p.project_type))).filter(Boolean).sort();
 
   const months = [
-    { label: 'January', value: '0' },
-    { label: 'February', value: '1' },
-    { label: 'March', value: '2' },
-    { label: 'April', value: '3' },
-    { label: 'May', value: '4' },
-    { label: 'June', value: '5' },
-    { label: 'July', value: '6' },
-    { label: 'August', value: '7' },
-    { label: 'September', value: '8' },
-    { label: 'October', value: '9' },
-    { label: 'November', value: '10' },
-    { label: 'December', value: '11' },
+    { label: 'April', value: '0' },
+    { label: 'May', value: '1' },
+    { label: 'June', value: '2' },
+    { label: 'July', value: '3' },
+    { label: 'August', value: '4' },
+    { label: 'September', value: '5' },
+    { label: 'October', value: '6' },
+    { label: 'November', value: '7' },
+    { label: 'December', value: '8' },
+    { label: 'January', value: '9' },
+    { label: 'February', value: '10' },
+    { label: 'March', value: '11' },
   ];
 
   // Filtering Logic
   const filteredProjects = (activeDataset as any[]).filter(p => {
-    // Search query check (id, title, leader, facilitator, area)
     const matchesSearch = searchQuery === '' || 
       p.project_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.project_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -104,13 +145,54 @@ export const Projects: React.FC = () => {
     const matchesCustomer = filterCustomer === '' || p.customer === filterCustomer;
     const matchesType = filterType === '' || p.project_type === filterType;
 
-    // Month check
     const dateStr = activeTab === 'approved' ? p.approval_date : (p.completion_date || p.created_date);
-    const dateMonth = dateStr ? new Date(dateStr).getMonth().toString() : '';
-    const matchesMonth = filterMonth === '' || dateMonth === filterMonth;
+    const dateMonthIdx = dateStr ? getFiscalMonthIndex(dateStr).toString() : '';
+    const matchesMonth = filterMonth === '' || dateMonthIdx === filterMonth;
 
     return matchesSearch && matchesWorkshop && matchesFacilitator && matchesLeader && matchesCustomer && matchesType && matchesMonth;
   });
+
+  // Append Q1 FY27 reconciliation row when approved tab is selected for FY27
+  const projectsListWithRecon = [...filteredProjects];
+  if (fiscalYear === 'FY27' && activeTab === 'approved') {
+    projectsListWithRecon.push({
+      id: 'RECON-FY27-Q1',
+      project_id: 'RECON-FY27-Q1',
+      project_title: 'Finance Spreadsheet Reconciliation Adjustment',
+      workshop: 'Reconciliation',
+      project_type: 'Other',
+      leader: 'Finance',
+      facilitator: 'Finance',
+      approval_date: '2026-06-30',
+      completion_date: '2026-06-30',
+      status: 'Approved',
+      op_contribution: 0,
+      one_time_savings: 9528.00,
+      soft_savings: 0,
+      inventory_savings: 0,
+      fte_savings: 0,
+      total_savings: 9528.00,
+      functional_area: 'Finance',
+      customer: 'N/A',
+      fiscal_year: 'FY27',
+      fiscal_quarter: 'Q1'
+    });
+  }
+
+  // Column Totals Calculations
+  const totalOp = projectsListWithRecon.reduce((sum, p) => sum + Number(p.op_contribution || 0), 0);
+  const totalOt = projectsListWithRecon.reduce((sum, p) => sum + Number(p.one_time_savings || 0), 0);
+
+  const getMonthlyTotal = (m: number) => {
+    return projectsListWithRecon.reduce((sum, p) => sum + getProjectSingleMonthSavings(p, m), 0);
+  };
+
+  const getQuarterTotal = (q: string) => {
+    const monthsForQ = q === 'Q1' ? [0, 1, 2] : q === 'Q2' ? [3, 4, 5] : q === 'Q3' ? [6, 7, 8] : [9, 10, 11];
+    return monthsForQ.reduce((sum, m) => sum + getMonthlyTotal(m), 0);
+  };
+
+  const totalFyTotal = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].reduce((sum, m) => sum + getMonthlyTotal(m), 0);
 
   // Reset filters when switching tabs
   const handleTabChange = (tab: 'approved' | 'open') => {
@@ -126,52 +208,286 @@ export const Projects: React.FC = () => {
 
   // Export Table to Excel
   const handleExportExcel = () => {
-    const dataToExport = filteredProjects.map(p => {
-      const targetSavings = getProjectPeriodSavings(p, 11);
-      const totalSavings = getProjectPeriodSavings(p, 11) + p.soft_savings + p.inventory_savings;
-      const dateLabel = activeTab === 'approved' ? 'Approval Date' : 'Created Date';
-      const dateVal = activeTab === 'approved' ? p.approval_date : p.created_date;
+    const dataToExport = projectsListWithRecon.map(p => {
+      const apr = getProjectSingleMonthSavings(p, 0);
+      const may = getProjectSingleMonthSavings(p, 1);
+      const jun = getProjectSingleMonthSavings(p, 2);
+      const q1 = apr + may + jun;
+      const jul = getProjectSingleMonthSavings(p, 3);
+      const aug = getProjectSingleMonthSavings(p, 4);
+      const sep = getProjectSingleMonthSavings(p, 5);
+      const q2 = jul + aug + sep;
+      const oct = getProjectSingleMonthSavings(p, 6);
+      const nov = getProjectSingleMonthSavings(p, 7);
+      const dec = getProjectSingleMonthSavings(p, 8);
+      const q3 = oct + nov + dec;
+      const jan = getProjectSingleMonthSavings(p, 9);
+      const feb = getProjectSingleMonthSavings(p, 10);
+      const mar = getProjectSingleMonthSavings(p, 11);
+      const q4 = jan + feb + mar;
+      const fyTotal = q1 + q2 + q3 + q4;
 
       return {
-        'Project ID': p.project_id,
         'Project Title': p.project_title,
-        'Workshop': p.workshop,
-        'Project Type': p.project_type,
-        'Leader': p.leader,
-        'Facilitator': p.facilitator,
-        'Status': p.status,
-        [dateLabel]: dateVal,
-        'Est. Completion': p.completion_date || 'N/A',
-        'Functional Area': p.functional_area,
-        'Category': p.project_category || 'N/A',
+        'Month': p.approval_date ? getFiscalMonthLabel(p.approval_date) : 'N/A',
         'Customer': p.customer || 'N/A',
-        'Business Unit': p.business || 'N/A',
-        'Op Contribution ($)': p.op_contribution,
-        'Soft Savings ($)': p.soft_savings,
-        'Inventory Savings ($)': p.inventory_savings,
-        'One-time Savings ($)': p.one_time_savings,
-        'Target-Qualifying Savings ($)': targetSavings,
-        'Total Project Savings ($)': totalSavings,
-        'FTE Savings (Headcount)': p.fte_savings
+        'Project ID': p.project_id,
+        'OP Contribution': p.op_contribution,
+        'One Time Savings': p.one_time_savings,
+        'Apr': apr,
+        'May': may,
+        'Jun': jun,
+        [`Q1${fiscalYear}`]: q1,
+        'Jul': jul,
+        'Aug': aug,
+        'Sep': sep,
+        [`Q2${fiscalYear}`]: q2,
+        'Oct': oct,
+        'Nov': nov,
+        'Dec': dec,
+        [`Q3${fiscalYear}`]: q3,
+        'Jan': jan,
+        'Feb': feb,
+        'Mar': mar,
+        [`Q4${fiscalYear}`]: q4,
+        'FY Total': fyTotal
       };
     });
 
+    // Totals row for Excel
+    const totalsRow = {
+      'Project Title': 'TOTALS',
+      'Month': '',
+      'Customer': '',
+      'Project ID': '',
+      'OP Contribution': totalOp,
+      'One Time Savings': totalOt,
+      'Apr': getMonthlyTotal(0),
+      'May': getMonthlyTotal(1),
+      'Jun': getMonthlyTotal(2),
+      [`Q1${fiscalYear}`]: getQuarterTotal('Q1'),
+      'Jul': getMonthlyTotal(3),
+      'Aug': getMonthlyTotal(4),
+      'Sep': getMonthlyTotal(5),
+      [`Q2${fiscalYear}`]: getQuarterTotal('Q2'),
+      'Oct': getMonthlyTotal(6),
+      'Nov': getMonthlyTotal(7),
+      'Dec': getMonthlyTotal(8),
+      [`Q3${fiscalYear}`]: getQuarterTotal('Q3'),
+      'Jan': getMonthlyTotal(9),
+      'Feb': getMonthlyTotal(10),
+      'Mar': getMonthlyTotal(11),
+      [`Q4${fiscalYear}`]: getQuarterTotal('Q4'),
+      'FY Total': totalFyTotal
+    };
+    dataToExport.push(totalsRow);
+
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, activeTab === 'approved' ? 'Approved Projects' : 'Open Projects');
+    XLSX.utils.book_append_sheet(workbook, worksheet, activeTab === 'approved' ? 'Approved Waterfall' : 'Open Waterfall');
     
-    // Fit columns width
-    const max_width = dataToExport.reduce((w, r) => Math.max(w, Object.keys(r).length), 10);
-    worksheet['!cols'] = Array(max_width).fill({ wch: 18 });
+    worksheet['!cols'] = [
+      { wch: 30 }, // Project Title
+      { wch: 12 }, // Month
+      { wch: 15 }, // Customer
+      { wch: 15 }, // Project ID
+      { wch: 15 }, // OP Contribution
+      { wch: 15 }, // One Time Savings
+      ...Array(17).fill({ wch: 10 })
+    ];
 
-    XLSX.writeFile(workbook, `Lean_Impact_${activeTab === 'approved' ? 'Approved' : 'Open'}_Projects.xlsx`);
+    XLSX.writeFile(workbook, `Lean_Impact_${fiscalYear}_${activeTab === 'approved' ? 'Approved' : 'Open'}_Waterfall.xlsx`);
+  };
+
+  // Styles for highlights
+  const stickyHeaderTitleStyle = {
+    position: 'sticky' as const,
+    left: 0,
+    zIndex: 15,
+    backgroundColor: '#F3F4F6',
+    minWidth: '240px',
+    boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)',
+    textAlign: 'left' as const
+  };
+
+  const stickyCellTitleStyle = (isEven: boolean) => ({
+    position: 'sticky' as const,
+    left: 0,
+    zIndex: 5,
+    backgroundColor: isEven ? '#FFFFFF' : '#F9FAFB',
+    minWidth: '240px',
+    fontWeight: 600,
+    boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)',
+    textAlign: 'left' as const
+  });
+
+  const quarterColStyle = { 
+    backgroundColor: '#F0F9FF', 
+    fontWeight: 700, 
+    textAlign: 'right' as const, 
+    color: '#0369A1' 
+  };
+  
+  const fyColStyle = { 
+    backgroundColor: '#ECFDF5', 
+    fontWeight: 800, 
+    textAlign: 'right' as const, 
+    color: '#15803D' 
+  };
+
+  // Render Table Element
+  const renderWaterfallTable = () => {
+    return (
+      <table className="executive-table" style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%' }}>
+        <thead>
+          <tr style={{ backgroundColor: '#F3F4F6' }}>
+            <th style={stickyHeaderTitleStyle}>Project Title</th>
+            <th style={{ minWidth: '110px' }}>Month</th>
+            <th style={{ minWidth: '120px' }}>Customer</th>
+            <th style={{ minWidth: '140px' }}>Project ID</th>
+            <th style={{ minWidth: '130px', textAlign: 'right' }}>OP Contribution</th>
+            <th style={{ minWidth: '140px', textAlign: 'right' }}>One Time Savings</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Apr</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>May</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Jun</th>
+            <th style={{ ...quarterColStyle, minWidth: '105px' }}>{`Q1${fiscalYear}`}</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Jul</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Aug</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Sep</th>
+            <th style={{ ...quarterColStyle, minWidth: '105px' }}>{`Q2${fiscalYear}`}</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Oct</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Nov</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Dec</th>
+            <th style={{ ...quarterColStyle, minWidth: '105px' }}>{`Q3${fiscalYear}`}</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Jan</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Feb</th>
+            <th style={{ minWidth: '85px', textAlign: 'right' }}>Mar</th>
+            <th style={{ ...quarterColStyle, minWidth: '105px' }}>{`Q4${fiscalYear}`}</th>
+            <th style={{ ...fyColStyle, minWidth: '115px' }}>FY Total</th>
+            <th style={{ minWidth: '80px', textAlign: 'center' }}>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {projectsListWithRecon.map((p, idx) => {
+            const isEven = idx % 2 === 0;
+            const isRecon = p.id === 'RECON-FY27-Q1';
+            
+            const apr = getProjectSingleMonthSavings(p, 0);
+            const may = getProjectSingleMonthSavings(p, 1);
+            const jun = getProjectSingleMonthSavings(p, 2);
+            const q1 = apr + may + jun;
+            const jul = getProjectSingleMonthSavings(p, 3);
+            const aug = getProjectSingleMonthSavings(p, 4);
+            const sep = getProjectSingleMonthSavings(p, 5);
+            const q2 = jul + aug + sep;
+            const oct = getProjectSingleMonthSavings(p, 6);
+            const nov = getProjectSingleMonthSavings(p, 7);
+            const dec = getProjectSingleMonthSavings(p, 8);
+            const q3 = oct + nov + dec;
+            const jan = getProjectSingleMonthSavings(p, 9);
+            const feb = getProjectSingleMonthSavings(p, 10);
+            const mar = getProjectSingleMonthSavings(p, 11);
+            const q4 = jan + feb + mar;
+            const fyTotal = q1 + q2 + q3 + q4;
+
+            return (
+              <tr 
+                key={p.id} 
+                onClick={() => !isRecon && setSelectedProject(p)}
+                style={{ 
+                  backgroundColor: isRecon ? '#FFFBEB' : (isEven ? '#FFFFFF' : '#F9FAFB'),
+                  cursor: isRecon ? 'default' : 'pointer'
+                }}
+              >
+                <td style={isRecon ? { ...stickyCellTitleStyle(isEven), backgroundColor: '#FFFBEB', color: '#B45309' } : stickyCellTitleStyle(isEven)}>
+                  {p.project_title}
+                </td>
+                <td>{p.approval_date ? getFiscalMonthLabel(p.approval_date) : 'N/A'}</td>
+                <td>{p.customer || 'N/A'}</td>
+                <td style={{ fontWeight: 700 }}>{p.project_id}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(p.op_contribution)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(p.one_time_savings)}</td>
+                
+                {/* Months */}
+                <td style={{ textAlign: 'right' }}>{formatCurrency(apr)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(may)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(jun)}</td>
+                <td style={quarterColStyle}>{formatCurrency(q1)}</td>
+                
+                <td style={{ textAlign: 'right' }}>{formatCurrency(jul)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(aug)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(sep)}</td>
+                <td style={quarterColStyle}>{formatCurrency(q2)}</td>
+                
+                <td style={{ textAlign: 'right' }}>{formatCurrency(oct)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(nov)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(dec)}</td>
+                <td style={quarterColStyle}>{formatCurrency(q3)}</td>
+                
+                <td style={{ textAlign: 'right' }}>{formatCurrency(jan)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(feb)}</td>
+                <td style={{ textAlign: 'right' }}>{formatCurrency(mar)}</td>
+                <td style={quarterColStyle}>{formatCurrency(q4)}</td>
+                
+                <td style={fyColStyle}>{formatCurrency(fyTotal)}</td>
+                
+                <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                  {!isRecon && (
+                    <button 
+                      onClick={() => setSelectedProject(p)} 
+                      className="btn-export" 
+                      style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center' }}
+                    >
+                      <Eye size={12} />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+          
+          {/* Totals Row */}
+          <tr style={{ backgroundColor: '#F3F4F6', fontWeight: 800 }}>
+            <td style={{ ...stickyCellTitleStyle(false), backgroundColor: '#F3F4F6', fontWeight: 800 }}>TOTALS</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(totalOp)}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(totalOt)}</td>
+            
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(0))}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(1))}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(2))}</td>
+            <td style={quarterColStyle}>{formatCurrency(getQuarterTotal('Q1'))}</td>
+            
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(3))}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(4))}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(5))}</td>
+            <td style={quarterColStyle}>{formatCurrency(getQuarterTotal('Q2'))}</td>
+            
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(6))}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(7))}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(8))}</td>
+            <td style={quarterColStyle}>{formatCurrency(getQuarterTotal('Q3'))}</td>
+            
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(9))}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(10))}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(getMonthlyTotal(11))}</td>
+            <td style={quarterColStyle}>{formatCurrency(getQuarterTotal('Q4'))}</td>
+            
+            <td style={fyColStyle}>{formatCurrency(totalFyTotal)}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    );
   };
 
   return (
     <div className="view-container">
       {/* Search and Filters */}
-      <div className="filters-panel">
-        <div style={{ position: 'relative', minWidth: '240px', flexGrow: 2 }}>
+      <div className="filters-panel" style={{ flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ position: 'relative', minWidth: '220px', flexGrow: 2 }}>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#9CA3AF' }} />
           <input
             type="text"
@@ -183,6 +499,15 @@ export const Projects: React.FC = () => {
           />
         </div>
         
+        <div className="filter-group" style={{ minWidth: '120px' }}>
+          <label className="filter-label">Select FY</label>
+          <select className="filter-select" value={fiscalYear} onChange={(e) => setFiscalYear(e.target.value)}>
+            {fiscalYears.map(fy => (
+              <option key={fy.id} value={fy.fiscal_year}>{fy.fiscal_year}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="filter-group">
           <label className="filter-label">Workshop</label>
           <select className="filter-select" value={filterWorkshop} onChange={(e) => setFilterWorkshop(e.target.value)}>
@@ -232,6 +557,16 @@ export const Projects: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end', marginLeft: 'auto' }}>
+          <button 
+            onClick={() => setIsExpanded(true)} 
+            className="btn-export"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            title="Expand Table"
+          >
+            <Maximize2 size={16} />
+            <span>Expand Table</span>
+          </button>
+          
           <button onClick={handleExportExcel} className="btn-export">
             <Download size={16} />
             <span>Export to Excel</span>
@@ -245,13 +580,13 @@ export const Projects: React.FC = () => {
           className={`tab-btn ${activeTab === 'approved' ? 'active' : ''}`}
           onClick={() => handleTabChange('approved')}
         >
-          Approved Projects ({approvedProjects.length})
+          Approved Projects ({activeDataset.length})
         </button>
         <button 
           className={`tab-btn ${activeTab === 'open' ? 'active' : ''}`}
           onClick={() => handleTabChange('open')}
         >
-          Open Projects ({openProjects.length})
+          Open Projects ({activeDataset.length})
         </button>
       </div>
 
@@ -259,71 +594,12 @@ export const Projects: React.FC = () => {
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="skeleton-loading skeleton-table-row" />
+            <div key={i} className="skeleton-loading skeleton-table-row" style={{ height: '48px' }} />
           ))}
         </div>
-      ) : filteredProjects.length > 0 ? (
-        <div className="table-container">
-          <table className="executive-table">
-            <thead>
-              <tr>
-                <th>Project ID</th>
-                <th>Project Title</th>
-                <th>Workshop</th>
-                <th>Type</th>
-                <th>Leader</th>
-                <th>Facilitator</th>
-                <th>Status</th>
-                <th>Savings (Target-Qualifying)</th>
-                <th>Area</th>
-                <th>Customer</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProjects.map((p) => {
-                const savings = getProjectPeriodSavings(p, 11);
-                return (
-                  <tr key={p.id} onClick={() => setSelectedProject(p)}>
-                    <td style={{ fontWeight: 700, color: '#111827' }}>{p.project_id}</td>
-                    <td style={{ whiteSpace: 'normal', maxWidth: '300px', fontWeight: 500 }}>{p.project_title}</td>
-                    <td>{p.workshop}</td>
-                    <td>
-                      <span className={`badge ${
-                        p.project_type.toUpperCase() === 'KAIZEN' ? 'badge-green' : 
-                        p.project_type.toUpperCase() === 'SGA' ? 'badge-yellow' : 'badge-blue'
-                      }`}>
-                        {p.project_type}
-                      </span>
-                    </td>
-                    <td>{p.leader}</td>
-                    <td>{p.facilitator}</td>
-                    <td>
-                      <span className={`badge ${
-                        activeTab === 'approved' ? 'badge-green' : 
-                        p.status.toLowerCase() === 'execution' ? 'badge-blue' : 'badge-gray'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: 700, color: '#16803D' }}>{formatCurrency(savings)}</td>
-                    <td>{p.functional_area}</td>
-                    <td>{p.customer || 'N/A'}</td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <button 
-                        onClick={() => setSelectedProject(p)} 
-                        className="btn-export" 
-                        style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                      >
-                        <Eye size={14} />
-                        <span>View</span>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      ) : projectsListWithRecon.length > 0 ? (
+        <div className="table-container" style={{ overflowX: 'auto', maxHeight: '600px', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
+          {renderWaterfallTable()}
         </div>
       ) : (
         <div className="card" style={{ textAlign: 'center', padding: '48px', color: '#6B7280' }}>
@@ -457,7 +733,7 @@ export const Projects: React.FC = () => {
                 </div>
               </div>
 
-              {/* FTE Headcount Savings (Notice Banner) */}
+              {/* FTE Headcount Savings */}
               <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', display: 'flex', gap: '12px' }}>
                 <div className="kpi-icon-container" style={{ backgroundColor: '#E0F2FE', color: '#0284C7', minWidth: '40px', height: '40px' }}>
                   <User size={18} />
@@ -472,6 +748,71 @@ export const Projects: React.FC = () => {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expanded Table Fullscreen Overlay Modal */}
+      {isExpanded && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            zIndex: 99999,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '20px'
+          }}
+        >
+          <div 
+            style={{
+              backgroundColor: '#FFFFFF',
+              width: '95vw',
+              height: '95vh',
+              borderRadius: '16px',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: 0 }}>
+                {`Projects Waterfall Spreadsheet View (${fiscalYear})`}
+              </h3>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={handleExportExcel} className="btn-export" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Download size={16} />
+                  <span>Export to Excel</span>
+                </button>
+                <button 
+                  onClick={() => setIsExpanded(false)} 
+                  className="btn-export"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '90px' }}
+                >
+                  <Minimize2 size={16} />
+                  <span>Minimize</span>
+                </button>
+              </div>
+            </div>
+
+            <div 
+              style={{ 
+                flex: 1, 
+                overflowX: 'auto', 
+                overflowY: 'auto', 
+                border: '1px solid #E5E7EB', 
+                borderRadius: '8px' 
+              }}
+            >
+              {renderWaterfallTable()}
             </div>
           </div>
         </div>

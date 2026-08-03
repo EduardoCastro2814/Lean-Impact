@@ -218,7 +218,10 @@ export const Dashboard: React.FC = () => {
     // Milestone targets (non-summing)
     const qTarget = getTargetForPeriod(targets, fiscalYear, q);
 
-    const qApproved = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, endMonthIdxForQ), 0);
+    let qApproved = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, endMonthIdxForQ), 0);
+    if (fiscalYear === 'FY27' && endMonthIdxForQ >= 2) {
+      qApproved += 9528.00;
+    }
     const qOpen = openFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, endMonthIdxForQ), 0);
 
     return {
@@ -229,32 +232,11 @@ export const Dashboard: React.FC = () => {
     };
   });
 
-  // 5. Target vs Actual Savings Trend Cumulative Data
-  const getTargetProgression = (monthIdx: number) => {
-    const q1T = getTargetForPeriod(targets, fiscalYear, 'Q1');
-    const q2T = getTargetForPeriod(targets, fiscalYear, 'Q2');
-    const q3T = getTargetForPeriod(targets, fiscalYear, 'Q3');
-    const q4T = getTargetForPeriod(targets, fiscalYear, 'Q4');
-
-    if (monthIdx <= 2) { // Apr (0), May (1), Jun (2)
-      return (q1T / 3) * (monthIdx + 1);
-    } else if (monthIdx <= 5) { // Jul (3), Aug (4), Sep (5)
-      const base = q1T;
-      const diff = q2T - q1T;
-      return base + (diff / 3) * (monthIdx - 2);
-    } else if (monthIdx <= 8) { // Oct (6), Nov (7), Dec (8)
-      const base = q2T;
-      const diff = q3T - q2T;
-      return base + (diff / 3) * (monthIdx - 5);
-    } else { // Jan (9), Feb (10), Mar (11)
-      const base = q3T;
-      const diff = q4T - q3T;
-      return base + (diff / 3) * (monthIdx - 8);
-    }
-  };
-
-  const cumulativeTrendData = fiscalMonths.map((m, monthIdx) => {
-    const targetVal = getTargetProgression(monthIdx);
+  // 5. Target vs Actual Savings Trend Cumulative Quarter Data
+  const cumulativeQuarterTrendData = quarters.map((q) => {
+    const monthIdx = q === 'Q1' ? 2 : q === 'Q2' ? 5 : q === 'Q3' ? 8 : 11;
+    const targetVal = getTargetForPeriod(targets, fiscalYear, q);
+    
     let actualVal = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
     
     // Apply Q1 spreadsheet adjustment of $9,528.00 from June (index 2) onwards
@@ -264,19 +246,18 @@ export const Dashboard: React.FC = () => {
 
     const potentialVal = openFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
     const forecastVal = actualVal + potentialVal;
+
     return {
-      name: m.name,
-      index: monthIdx,
+      name: q,
       'Target Savings': Math.round(targetVal),
       'Actual Savings': Math.round(actualVal),
-      'Forecast': Math.round(forecastVal),
+      'Forecast Savings': Math.round(forecastVal),
       'Variance': Math.round(actualVal - targetVal)
     };
   });
 
   // 6. Quarterly FTE Headcount Savings Data
-  const quartersList = ['Q1', 'Q2', 'Q3', 'Q4'];
-  const fteData = quartersList.map(q => {
+  const fteData = quarters.map(q => {
     const approvedFteVal = approvedFiltered
       .filter(p => p.fiscal_year === fiscalYear && p.fiscal_quarter === q)
       .reduce((sum, p) => sum + p.fte_savings, 0);
@@ -332,7 +313,7 @@ export const Dashboard: React.FC = () => {
       chartComponent = (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <ResponsiveContainer width="100%" height={380}>
-            <LineChart data={cumulativeTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <LineChart data={cumulativeQuarterTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis tickFormatter={formatCurrency} />
@@ -340,7 +321,7 @@ export const Dashboard: React.FC = () => {
               <Legend />
               <Line type="monotone" dataKey="Actual Savings" stroke="#16A34A" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
               <Line type="monotone" dataKey="Target Savings" stroke="#4B5563" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="Forecast" stroke="#2563EB" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Forecast Savings" stroke="#2563EB" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
           
@@ -348,28 +329,25 @@ export const Dashboard: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
               <thead>
                 <tr style={{ backgroundColor: '#F3F4F6', borderBottom: '2px solid #E5E7EB' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Fiscal Month</th>
                   <th style={{ padding: '12px 16px', fontWeight: 700 }}>Quarter</th>
                   <th style={{ padding: '12px 16px', fontWeight: 700 }}>Target Savings</th>
                   <th style={{ padding: '12px 16px', fontWeight: 700 }}>Actual Savings (Realized)</th>
                   <th style={{ padding: '12px 16px', fontWeight: 700 }}>Variance to Target</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Forecast (Cumulative)</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Forecast Savings (Cumulative)</th>
                 </tr>
               </thead>
               <tbody>
-                {cumulativeTrendData.map((row, idx) => {
-                  const qLabel = idx <= 2 ? 'Q1' : idx <= 5 ? 'Q2' : idx <= 8 ? 'Q3' : 'Q4';
+                {cumulativeQuarterTrendData.map((row, idx) => {
                   const isPositive = row.Variance >= 0;
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid #E5E7EB', backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }}>
                       <td style={{ padding: '10px 16px', fontWeight: 600 }}>{row.name}</td>
-                      <td style={{ padding: '10px 16px', color: '#4B5563' }}>{qLabel}</td>
                       <td style={{ padding: '10px 16px' }}>{formatCurrency(row['Target Savings'])}</td>
                       <td style={{ padding: '10px 16px', color: '#16A34A', fontWeight: 600 }}>{formatCurrency(row['Actual Savings'])}</td>
                       <td style={{ padding: '10px 16px', color: isPositive ? '#16A34A' : '#DC2626', fontWeight: 600 }}>
                         {isPositive ? '+' : ''}{formatCurrency(row.Variance)}
                       </td>
-                      <td style={{ padding: '10px 16px', color: '#2563EB' }}>{formatCurrency(row.Forecast)}</td>
+                      <td style={{ padding: '10px 16px', color: '#2563EB' }}>{formatCurrency(row['Forecast Savings'])}</td>
                     </tr>
                   );
                 })}
@@ -721,7 +699,7 @@ export const Dashboard: React.FC = () => {
             </div>
             <div style={{ flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
               <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-                <LineChart data={cumulativeTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                <LineChart data={cumulativeQuarterTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
                   <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
