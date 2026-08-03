@@ -6,13 +6,14 @@ import {
 import { 
   BarChart, 
   Bar, 
+  LineChart,
+  Line,
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   Legend, 
-  ResponsiveContainer,
-  Cell
+  ResponsiveContainer
 } from 'recharts';
 import html2canvas from 'html2canvas';
 import { dbService, getFyDisplayLabel, getFiscalMonthIndex, getProjectPeriodSavings } from '../lib/supabaseClient';
@@ -206,28 +207,44 @@ export const Dashboard: React.FC = () => {
     };
   });
 
-  // 5. Savings Waterfall Chart Data
+  // 5. Target vs Actual Savings Trend Cumulative Data
+  const getTargetProgression = (monthIdx: number) => {
+    const q1T = getTargetForPeriod(targets, fiscalYear, 'Q1');
+    const q2T = getTargetForPeriod(targets, fiscalYear, 'Q2');
+    const q3T = getTargetForPeriod(targets, fiscalYear, 'Q3');
+    const q4T = getTargetForPeriod(targets, fiscalYear, 'Q4');
 
-  // 5. Savings Waterfall Chart Data
-  const waterfallData = [
-    { name: 'Target', base: 0, value: annualTarget, display: annualTarget, fill: '#4B5563' },
-    { name: 'Realized', base: 0, value: realizedSavings, display: realizedSavings, fill: '#16A34A' },
-    { name: 'Potential', base: realizedSavings, value: potentialSavings, display: potentialSavings, fill: '#2563EB' },
-    { name: 'Deficit Gap', base: expectedFinalSavings < annualTarget ? expectedFinalSavings : 0, value: savingsGap, display: savingsGap, fill: '#DC2626' }
-  ];
-
-  const renderWaterfallTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div style={{ backgroundColor: '#fff', border: '1px solid #ccc', padding: '10px', borderRadius: '4px' }}>
-          <p style={{ fontWeight: 'bold', margin: 0 }}>{data.name}</p>
-          <p style={{ color: data.fill, margin: '4px 0 0' }}>Value: {formatCurrency(data.display)}</p>
-        </div>
-      );
+    if (monthIdx <= 2) { // Apr (0), May (1), Jun (2)
+      return (q1T / 3) * (monthIdx + 1);
+    } else if (monthIdx <= 5) { // Jul (3), Aug (4), Sep (5)
+      const base = q1T;
+      const diff = q2T - q1T;
+      return base + (diff / 3) * (monthIdx - 2);
+    } else if (monthIdx <= 8) { // Oct (6), Nov (7), Dec (8)
+      const base = q2T;
+      const diff = q3T - q2T;
+      return base + (diff / 3) * (monthIdx - 5);
+    } else { // Jan (9), Feb (10), Mar (11)
+      const base = q3T;
+      const diff = q4T - q3T;
+      return base + (diff / 3) * (monthIdx - 8);
     }
-    return null;
   };
+
+  const cumulativeTrendData = fiscalMonths.map((m, monthIdx) => {
+    const targetVal = getTargetProgression(monthIdx);
+    const actualVal = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
+    const potentialVal = openFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
+    const forecastVal = actualVal + potentialVal;
+    return {
+      name: m.name,
+      index: monthIdx,
+      'Target Savings': Math.round(targetVal),
+      'Actual Savings': Math.round(actualVal),
+      'Forecast': Math.round(forecastVal),
+      'Variance': Math.round(actualVal - targetVal)
+    };
+  });
 
   // 6. Quarterly FTE Headcount Savings Data
   const quartersList = ['Q1', 'Q2', 'Q3', 'Q4'];
@@ -282,23 +299,56 @@ export const Dashboard: React.FC = () => {
     let chartTitle = '';
     let chartComponent = null;
 
-    if (expandedChart === 'waterfall') {
-      chartTitle = 'Savings Waterfall (Annual Target Achievement)';
+    if (expandedChart === 'trend') {
+      chartTitle = 'Target vs Actual Savings Trend (Cumulative)';
       chartComponent = (
-        <ResponsiveContainer width="100%" height={500}>
-          <BarChart data={waterfallData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis tickFormatter={formatCurrency} />
-            <Tooltip content={renderWaterfallTooltip} />
-            <Bar dataKey="base" stackId="a" fill="transparent" />
-            <Bar dataKey="value" stackId="a">
-              {waterfallData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <ResponsiveContainer width="100%" height={380}>
+            <LineChart data={cumulativeTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis tickFormatter={formatCurrency} />
+              <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+              <Legend />
+              <Line type="monotone" dataKey="Actual Savings" stroke="#16A34A" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="Target Savings" stroke="#4B5563" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Forecast" stroke="#2563EB" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+          
+          <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#F3F4F6', borderBottom: '2px solid #E5E7EB' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Fiscal Month</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Quarter</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Target Savings</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Actual Savings (Realized)</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Variance to Target</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Forecast (Cumulative)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cumulativeTrendData.map((row, idx) => {
+                  const qLabel = idx <= 2 ? 'Q1' : idx <= 5 ? 'Q2' : idx <= 8 ? 'Q3' : 'Q4';
+                  const isPositive = row.Variance >= 0;
+                  return (
+                    <tr key={idx} style={{ borderBottom: '1px solid #E5E7EB', backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }}>
+                      <td style={{ padding: '10px 16px', fontWeight: 600 }}>{row.name}</td>
+                      <td style={{ padding: '10px 16px', color: '#4B5563' }}>{qLabel}</td>
+                      <td style={{ padding: '10px 16px' }}>{formatCurrency(row['Target Savings'])}</td>
+                      <td style={{ padding: '10px 16px', color: '#16A34A', fontWeight: 600 }}>{formatCurrency(row['Actual Savings'])}</td>
+                      <td style={{ padding: '10px 16px', color: isPositive ? '#16A34A' : '#DC2626', fontWeight: 600 }}>
+                        {isPositive ? '+' : ''}{formatCurrency(row.Variance)}
+                      </td>
+                      <td style={{ padding: '10px 16px', color: '#2563EB' }}>{formatCurrency(row.Forecast)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       );
     } else if (expandedChart === 'monthly') {
       chartTitle = 'Monthly Savings Breakdown (Stacked Month Trend)';
@@ -369,6 +419,8 @@ export const Dashboard: React.FC = () => {
           borderRadius: '16px',
           width: '90%',
           maxWidth: '1200px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
           padding: '24px',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
           position: 'relative',
@@ -426,64 +478,135 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="view-container">
       {/* Top Filter Header */}
-      <div className="filters-panel">
-        <div style={{ display: 'flex', gap: '12px', flexGrow: 0 }}>
-          <div className="filter-group" style={{ minWidth: '160px' }}>
-            <label className="filter-label">Select FY</label>
-            <select 
-              className="filter-select"
-              value={fiscalYear} 
-              onChange={(e) => setFiscalYear(e.target.value)}
-            >
-              {fiscalYears.map(fy => (
-                <option key={fy.id} value={fy.fiscal_year}>{getFyDisplayLabel(fy.fiscal_year)}</option>
-              ))}
-            </select>
-          </div>
+      {!isPresentation && (
+        <div className="filters-panel">
+          <div style={{ display: 'flex', gap: '12px', flexGrow: 0 }}>
+            <div className="filter-group" style={{ minWidth: '160px' }}>
+              <label className="filter-label">Select FY</label>
+              <select 
+                className="filter-select"
+                value={fiscalYear} 
+                onChange={(e) => setFiscalYear(e.target.value)}
+              >
+                {fiscalYears.map(fy => (
+                  <option key={fy.id} value={fy.fiscal_year}>{getFyDisplayLabel(fy.fiscal_year)}</option>
+                ))}
+              </select>
+            </div>
 
-          <div className="filter-group" style={{ minWidth: '160px' }}>
-            <label className="filter-label">Select Quarter</label>
-            <select 
-              className="filter-select"
-              value={quarter} 
-              onChange={(e) => setQuarter(e.target.value)}
-            >
-              <option value="All">All Quarters</option>
-              <option value="Q1">Q1 (April - June)</option>
-              <option value="Q2">Q2 (July - Sept)</option>
-              <option value="Q3">Q3 (Oct - Dec)</option>
-              <option value="Q4">Q4 (Jan - Mar)</option>
-            </select>
+            <div className="filter-group" style={{ minWidth: '160px' }}>
+              <label className="filter-label">Select Quarter</label>
+              <select 
+                className="filter-select"
+                value={quarter} 
+                onChange={(e) => setQuarter(e.target.value)}
+              >
+                <option value="All">All Quarters</option>
+                <option value="Q1">Q1 (April - June)</option>
+                <option value="Q2">Q2 (July - Sept)</option>
+                <option value="Q3">Q3 (Oct - Dec)</option>
+                <option value="Q4">Q4 (Jan - Mar)</option>
+              </select>
+            </div>
           </div>
-        </div>
-        
-        <div style={{ flexGrow: 1 }} />
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            onClick={togglePresentationMode} 
-            className="btn-export"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Activity size={16} />
-            <span>{isPresentation ? 'Exit Presentation' : 'Presentation Mode'}</span>
-          </button>
           
-          <button 
-            onClick={() => exportChart('dashboard-presentation-container', `Lean_Impact_Dashboard_${fiscalYear}_${quarter}`)} 
-            className="btn-export btn-export-primary"
-          >
-            <Download size={16} />
-            <span>Export Executive Report</span>
-          </button>
+          <div style={{ flexGrow: 1 }} />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              onClick={togglePresentationMode} 
+              className="btn-export"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <Activity size={16} />
+              <span>Presentation Mode</span>
+            </button>
+            
+            <button 
+              onClick={() => exportChart('dashboard-presentation-container', `Lean_Impact_Dashboard_${fiscalYear}_${quarter}`)} 
+              className="btn-export btn-export-primary"
+            >
+              <Download size={16} />
+              <span>Export Executive Report</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div id="dashboard-presentation-container" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        
+      <div 
+        id="dashboard-presentation-container" 
+        style={isPresentation ? {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: '#F9FAFB',
+          padding: '20px',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          zIndex: 99999,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        } : {
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px'
+        }}
+      >
+        {/* Compact Presentation Header controls inside fullscreen */}
+        {isPresentation && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', padding: '12px 20px', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#111827' }}>Lean Impact Executive Monitoring Dashboard</span>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <select 
+                  className="filter-select"
+                  style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                  value={fiscalYear} 
+                  onChange={(e) => setFiscalYear(e.target.value)}
+                >
+                  {fiscalYears.map(fy => (
+                    <option key={fy.id} value={fy.fiscal_year}>{getFyDisplayLabel(fy.fiscal_year)}</option>
+                  ))}
+                </select>
+                <select 
+                  className="filter-select"
+                  style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                  value={quarter} 
+                  onChange={(e) => setQuarter(e.target.value)}
+                >
+                  <option value="All">All Quarters</option>
+                  <option value="Q1">Q1 (April - June)</option>
+                  <option value="Q2">Q2 (July - Sept)</option>
+                  <option value="Q3">Q3 (Oct - Dec)</option>
+                  <option value="Q4">Q4 (Jan - Mar)</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={togglePresentationMode} 
+                className="btn-export"
+                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+              >
+                Exit Presentation
+              </button>
+              <button 
+                onClick={() => exportChart('dashboard-presentation-container', `Lean_Impact_Dashboard_${fiscalYear}_${quarter}`)}
+                className="btn-export btn-export-primary"
+                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+              >
+                Export PNG
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* TOP SECTION: EXECUTIVE PROGRESS BAR */}
-        <div className="card" style={{ padding: '24px', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: 0 }}>
+        <div className="card" style={isPresentation ? { padding: '16px 20px', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '8px' } : { padding: '24px', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isPresentation ? '4px' : '16px' }}>
+            <h3 style={{ fontSize: isPresentation ? '1.1rem' : '1.25rem', fontWeight: 800, color: '#111827', margin: 0 }}>
               Annual Target vs Current Savings Pipeline
             </h3>
             <span style={{ fontSize: '0.875rem', fontWeight: 700, padding: '4px 12px', backgroundColor: '#F0F9FF', color: '#0369A1', borderRadius: '9999px' }}>
@@ -491,26 +614,26 @@ export const Dashboard: React.FC = () => {
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: isPresentation ? '4px' : '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Target FY Milestone</span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827' }}>{formatCurrency(annualTarget)}</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Target FY Milestone</span>
+              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#111827' }}>{formatCurrency(annualTarget)}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Current Realized Savings</span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Current Realized Savings</span>
+              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Potential Savings</span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#2563EB' }}>{formatCurrency(potentialSavings)}</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Potential Savings</span>
+              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#2563EB' }}>{formatCurrency(potentialSavings)}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Forecast End of FY</span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F766E' }}>{formatCurrency(expectedFinalSavings)}</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Forecast End of FY</span>
+              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#0F766E' }}>{formatCurrency(expectedFinalSavings)}</span>
             </div>
           </div>
 
-          <div style={{ width: '100%', height: '24px', backgroundColor: '#E5E7EB', borderRadius: '12px', overflow: 'hidden', display: 'flex', position: 'relative' }}>
+          <div style={{ width: '100%', height: isPresentation ? '16px' : '24px', backgroundColor: '#E5E7EB', borderRadius: '12px', overflow: 'hidden', display: 'flex', position: 'relative' }}>
             <div 
               style={{ 
                 width: `${realizedPercent}%`, 
@@ -543,7 +666,7 @@ export const Dashboard: React.FC = () => {
             )}
           </div>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.75rem', color: '#6B7280', fontWeight: 600 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.7rem', color: '#6B7280', fontWeight: 600 }}>
             <span>0%</span>
             <span>Forecast Achieved: {forecastAchievementPercent.toFixed(1)}%</span>
             <span>100% Target Milestone</span>
@@ -551,59 +674,93 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* SUMMARY ROW: THREE EXECUTIVE CARDS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid #10B981', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closed Projects</span>
-            <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{approvedCount}</span>
-            <span style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 600 }}>Approved and realized impact</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+          <div className="card" style={{ padding: isPresentation ? '12px 16px' : '24px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #10B981', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closed Projects</span>
+            <span style={{ fontSize: isPresentation ? '1.8rem' : '2.5rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{approvedCount}</span>
+            <span style={{ fontSize: '0.7rem', color: '#10B981', fontWeight: 600 }}>Approved and realized impact</span>
           </div>
-          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid #3B82F6', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Projects</span>
-            <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{openCount}</span>
-            <span style={{ fontSize: '0.75rem', color: '#3B82F6', fontWeight: 600 }}>Active open pipeline</span>
+          <div className="card" style={{ padding: isPresentation ? '12px 16px' : '24px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #3B82F6', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Projects</span>
+            <span style={{ fontSize: isPresentation ? '1.8rem' : '2.5rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{openCount}</span>
+            <span style={{ fontSize: '0.7rem', color: '#3B82F6', fontWeight: 600 }}>Active open pipeline</span>
           </div>
-          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid #0F766E', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Qualified Savings</span>
-            <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0F766E', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
-            <span style={{ fontSize: '0.75rem', color: '#0F766E', fontWeight: 600 }}>Target-Qualifying (OP + One-Time)</span>
+          <div className="card" style={{ padding: isPresentation ? '12px 16px' : '24px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #0F766E', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Qualified Savings</span>
+            <span style={{ fontSize: isPresentation ? '1.8rem' : '2.5rem', fontWeight: 800, color: '#0F766E', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
+            <span style={{ fontSize: '0.7rem', color: '#0F766E', fontWeight: 600 }}>Target-Qualifying (OP + One-Time)</span>
           </div>
         </div>
 
         {/* MAIN ANALYTICS GRID: 2x2 CHART TILES */}
-        <div className="dashboard-grid-2x2">
+        <div 
+          className="dashboard-grid-2x2" 
+          style={isPresentation ? {
+            flex: 1,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gridTemplateRows: 'repeat(2, 1fr)',
+            gap: '16px',
+            overflow: 'hidden'
+          } : {
+            display: 'grid',
+            gap: '24px',
+            marginTop: '20px'
+          }}
+        >
           
-          {/* Card 1: Savings Waterfall Chart */}
-          <div className="card" id="waterfall-chart-tile" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Card 1: Target vs Actual Savings Trend Chart */}
+          <div 
+            className="card" 
+            id="trend-chart-tile" 
+            style={{ 
+              padding: isPresentation ? '12px 16px' : '20px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: isPresentation ? '8px' : '16px',
+              cursor: 'pointer',
+              height: '100%',
+              overflow: 'hidden'
+            }}
+            onClick={() => setExpandedChart('trend')}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Savings Waterfall Chart</span>
+              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Target vs Actual Savings Trend</span>
               <button 
-                onClick={() => setExpandedChart('waterfall')} 
+                onClick={(e) => { e.stopPropagation(); setExpandedChart('trend'); }} 
                 className="btn-export"
                 style={{ padding: '4px 8px', fontSize: '0.75rem' }}
               >
                 Expand
               </button>
             </div>
-            <div style={{ width: '100%', height: 320 }}>
+            <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={waterfallData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                <LineChart data={cumulativeTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
                   <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip content={renderWaterfallTooltip} />
-                  <Bar dataKey="base" stackId="a" fill="transparent" />
-                  <Bar dataKey="value" stackId="a">
-                    {waterfallData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Line type="monotone" dataKey="Actual Savings" stroke="#16A34A" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="Target Savings" stroke="#4B5563" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           {/* Card 2: Monthly Savings Breakdown */}
-          <div className="card" id="monthly-chart-tile" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div 
+            className="card" 
+            id="monthly-chart-tile" 
+            style={{ 
+              padding: isPresentation ? '12px 16px' : '20px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: isPresentation ? '8px' : '16px',
+              height: '100%',
+              overflow: 'hidden'
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Monthly Savings Breakdown</span>
               <button 
@@ -614,9 +771,9 @@ export const Dashboard: React.FC = () => {
                 Expand
               </button>
             </div>
-            <div style={{ width: '100%', height: 320 }}>
+            <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={realizedByTypeData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                <BarChart data={realizedByTypeData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
                   <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
@@ -631,7 +788,18 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {/* Card 3: Quarter Performance */}
-          <div className="card" id="quarter-chart-tile" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div 
+            className="card" 
+            id="quarter-chart-tile" 
+            style={{ 
+              padding: isPresentation ? '12px 16px' : '20px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: isPresentation ? '8px' : '16px',
+              height: '100%',
+              overflow: 'hidden'
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Quarter Performance</span>
               <button 
@@ -642,9 +810,9 @@ export const Dashboard: React.FC = () => {
                 Expand
               </button>
             </div>
-            <div style={{ width: '100%', height: 320 }}>
+            <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={quarterlySavingsData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                <BarChart data={quarterlySavingsData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
                   <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
@@ -658,7 +826,18 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {/* Card 4: FTE Performance */}
-          <div className="card" id="fte-chart-tile" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div 
+            className="card" 
+            id="fte-chart-tile" 
+            style={{ 
+              padding: isPresentation ? '12px 16px' : '20px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: isPresentation ? '8px' : '16px',
+              height: '100%',
+              overflow: 'hidden'
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Productivity Impact (FTE Savings)</span>
               <button 
@@ -669,9 +848,9 @@ export const Dashboard: React.FC = () => {
                 Expand
               </button>
             </div>
-            <div style={{ width: '100%', height: 320 }}>
+            <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={fteData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                <BarChart data={fteData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
                   <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} />

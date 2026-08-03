@@ -8,10 +8,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const getFiscalMonthIndex = (dateStr: string): number => {
   if (!dateStr) return 0;
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return 0;
-  const m = date.getMonth(); // 0 = Jan, 1 = Feb, ..., 11 = Dec
-  // Map so April = 0, May = 1, ..., March = 11
+  const cleanDate = dateStr.substring(0, 10);
+  const parts = cleanDate.split('-');
+  if (parts.length < 2) return 0;
+  const m = parseInt(parts[1], 10) - 1; // 0-indexed month (0 = Jan)
+  if (isNaN(m) || m < 0 || m > 11) return 0;
   return m >= 3 ? m - 3 : m + 9;
 };
 
