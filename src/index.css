@@ -1031,3 +1031,22 @@ body {
     gap: 12px;
   }
 }
+
+/* Executive Dashboard 2x2 Grid and Presentation Mode Override */
+.dashboard-grid-2x2 {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1024px) {
+  .dashboard-grid-2x2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+#dashboard-presentation-container:fullscreen {
+  padding: 32px;
+  background-color: #F9FAFB;
+  overflow-y: auto;
+  width: 100vw;
+  height: 100vh;
+}

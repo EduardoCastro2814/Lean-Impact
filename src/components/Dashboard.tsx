@@ -1,14 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  TrendingUp, 
-  DollarSign, 
-  Target, 
-  Percent, 
   Activity, 
-  Download,
-  AlertTriangle,
-  CheckCircle,
-  Briefcase
+  Download
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -18,7 +11,8 @@ import {
   CartesianGrid, 
   Tooltip, 
   Legend, 
-  ResponsiveContainer
+  ResponsiveContainer,
+  Cell
 } from 'recharts';
 import html2canvas from 'html2canvas';
 import { dbService, getFyDisplayLabel, getFiscalMonthIndex, getProjectPeriodSavings } from '../lib/supabaseClient';
@@ -40,6 +34,8 @@ export const Dashboard: React.FC = () => {
   const [targets, setTargets] = useState<SavingsTarget[]>([]);
   const [fiscalYears, setFiscalYears] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPresentation, setIsPresentation] = useState(false);
+  const [expandedChart, setExpandedChart] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -77,6 +73,28 @@ export const Dashboard: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsPresentation(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setExpandedChart(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   // End month index for cumulative mapping
   const endMonthIdx = quarter === 'Q1' ? 2 : quarter === 'Q2' ? 5 : quarter === 'Q3' ? 8 : 11;
 
@@ -106,10 +124,7 @@ export const Dashboard: React.FC = () => {
     const mProj = getFiscalMonthIndex(p.approval_date);
     return sum + (mProj <= endMonthIdx ? p.op_contribution * (endMonthIdx - mProj + 1) : 0);
   }, 0);
-  const realizedSoft = approvedFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.approval_date) <= endMonthIdx ? p.soft_savings : 0), 0);
-  const realizedInventory = approvedFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.approval_date) <= endMonthIdx ? p.inventory_savings : 0), 0);
   const realizedOneTime = approvedFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.approval_date) <= endMonthIdx ? p.one_time_savings : 0), 0);
-  const realizedFte = approvedFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.approval_date) <= endMonthIdx ? p.fte_savings : 0), 0);
   const realizedSavings = realizedOp + realizedOneTime;
 
   // Potential Breakdown (Open Projects)
@@ -117,23 +132,11 @@ export const Dashboard: React.FC = () => {
     const mProj = getFiscalMonthIndex(p.created_date);
     return sum + (mProj <= endMonthIdx ? p.op_contribution * (endMonthIdx - mProj + 1) : 0);
   }, 0);
-  const potentialSoft = openFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.created_date) <= endMonthIdx ? p.soft_savings : 0), 0);
-  const potentialInventory = openFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.created_date) <= endMonthIdx ? p.inventory_savings : 0), 0);
   const potentialOneTime = openFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.created_date) <= endMonthIdx ? p.one_time_savings : 0), 0);
-  const potentialFte = openFiltered.reduce((sum, p) => sum + (getFiscalMonthIndex(p.created_date) <= endMonthIdx ? p.fte_savings : 0), 0);
   const potentialSavings = potentialOp + potentialOneTime;
-
-  // Overall Breakdown (Total Savings)
-  const totalOp = realizedOp + potentialOp;
-  const totalSoft = realizedSoft + potentialSoft;
-  const totalInventory = realizedInventory + potentialInventory;
-  const totalOneTime = realizedOneTime + potentialOneTime;
-  const totalFte = realizedFte + potentialFte;
-  const totalSavings = realizedSavings + potentialSavings;
 
   // Other Executive KPIs
   const expectedFinalSavings = realizedSavings + potentialSavings;
-  const achievementPercent = annualTarget > 0 ? (realizedSavings / annualTarget) * 100 : 0;
   const forecastAchievementPercent = annualTarget > 0 ? (expectedFinalSavings / annualTarget) * 100 : 0;
   const rawGap = annualTarget - realizedSavings;
   const savingsGap = rawGap > 0 ? rawGap : 0;
@@ -184,26 +187,6 @@ export const Dashboard: React.FC = () => {
     };
   });
 
-  // 2. Chart 2: Potential Savings by Type (stacked month trend April to March)
-  const potentialByTypeData = fiscalMonths.map((m, monthIdx) => {
-    const opSavings = openFiltered
-      .filter(p => getFiscalMonthIndex(p.created_date) <= monthIdx)
-      .reduce((sum, p) => sum + p.op_contribution, 0);
-
-    const currentMonthProjects = openFiltered.filter(p => getFiscalMonthIndex(p.created_date) === monthIdx);
-    const oneTime = currentMonthProjects.reduce((sum, p) => sum + p.one_time_savings, 0);
-    const soft = currentMonthProjects.reduce((sum, p) => sum + p.soft_savings, 0);
-    const inventory = currentMonthProjects.reduce((sum, p) => sum + p.inventory_savings, 0);
-
-    return {
-      name: m.name,
-      'OP Contribution': opSavings,
-      'Soft Savings': soft,
-      'Inventory Savings': inventory,
-      'One Time Savings': oneTime
-    };
-  });
-
   // 3. Chart 3: Savings by Fiscal Quarter
   const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
   const quarterlySavingsData = quarters.map((q, qIdx) => {
@@ -223,25 +206,60 @@ export const Dashboard: React.FC = () => {
     };
   });
 
-  // 4. Chart 4: Savings by Fiscal Year
-  const yearlySavingsData = fiscalYears.map(fy => {
-    const fyTarget = getTargetForPeriod(targets, fy.fiscal_year, 'All');
+  // 5. Savings Waterfall Chart Data
 
-    const fyApproved = approvedProjects
-      .filter(p => p.fiscal_year === fy.fiscal_year)
-      .reduce((sum, p) => sum + getProjectPeriodSavings(p, 11), 0);
-    
-    const fyOpen = openProjects
-      .filter(p => p.fiscal_year === fy.fiscal_year)
-      .reduce((sum, p) => sum + getProjectPeriodSavings(p, 11), 0);
+  // 5. Savings Waterfall Chart Data
+  const waterfallData = [
+    { name: 'Target', base: 0, value: annualTarget, display: annualTarget, fill: '#4B5563' },
+    { name: 'Realized', base: 0, value: realizedSavings, display: realizedSavings, fill: '#16A34A' },
+    { name: 'Potential', base: realizedSavings, value: potentialSavings, display: potentialSavings, fill: '#2563EB' },
+    { name: 'Deficit Gap', base: expectedFinalSavings < annualTarget ? expectedFinalSavings : 0, value: savingsGap, display: savingsGap, fill: '#DC2626' }
+  ];
+
+  const renderWaterfallTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div style={{ backgroundColor: '#fff', border: '1px solid #ccc', padding: '10px', borderRadius: '4px' }}>
+          <p style={{ fontWeight: 'bold', margin: 0 }}>{data.name}</p>
+          <p style={{ color: data.fill, margin: '4px 0 0' }}>Value: {formatCurrency(data.display)}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // 6. Quarterly FTE Headcount Savings Data
+  const quartersList = ['Q1', 'Q2', 'Q3', 'Q4'];
+  const fteData = quartersList.map(q => {
+    const approvedFteVal = approvedFiltered
+      .filter(p => p.fiscal_year === fiscalYear && p.fiscal_quarter === q)
+      .reduce((sum, p) => sum + p.fte_savings, 0);
+
+    const openFteVal = openFiltered
+      .filter(p => p.fiscal_year === fiscalYear && p.fiscal_quarter === q)
+      .reduce((sum, p) => sum + p.fte_savings, 0);
 
     return {
-      name: fy.fiscal_year,
-      'Target': fyTarget,
-      'Approved Realized': fyApproved,
-      'Open Potential': fyOpen
+      name: q,
+      'Approved FTE': approvedFteVal,
+      'Open FTE': openFteVal
     };
   });
+
+  const togglePresentationMode = () => {
+    const container = document.getElementById('dashboard-presentation-container');
+    if (!container) return;
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().catch(err => {
+        console.error('Error enabling presentation mode:', err, container);
+      });
+      setIsPresentation(true);
+    } else {
+      document.exitFullscreen();
+      setIsPresentation(false);
+    }
+  };
 
   const exportChart = (id: string, fileName: string) => {
     const element = document.getElementById(id);
@@ -258,15 +276,149 @@ export const Dashboard: React.FC = () => {
     });
   };
 
+  const renderExpandedChartModal = () => {
+    if (!expandedChart) return null;
+    
+    let chartTitle = '';
+    let chartComponent = null;
+
+    if (expandedChart === 'waterfall') {
+      chartTitle = 'Savings Waterfall (Annual Target Achievement)';
+      chartComponent = (
+        <ResponsiveContainer width="100%" height={500}>
+          <BarChart data={waterfallData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis tickFormatter={formatCurrency} />
+            <Tooltip content={renderWaterfallTooltip} />
+            <Bar dataKey="base" stackId="a" fill="transparent" />
+            <Bar dataKey="value" stackId="a">
+              {waterfallData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    } else if (expandedChart === 'monthly') {
+      chartTitle = 'Monthly Savings Breakdown (Stacked Month Trend)';
+      chartComponent = (
+        <ResponsiveContainer width="100%" height={500}>
+          <BarChart data={realizedByTypeData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis tickFormatter={formatCurrency} />
+            <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+            <Legend />
+            <Bar dataKey="OP Contribution" stackId="a" fill="#16A34A" />
+            <Bar dataKey="One Time Savings" stackId="a" fill="#3B82F6" />
+            <Bar dataKey="Soft Savings" stackId="a" fill="#9CA3AF" />
+            <Bar dataKey="Inventory Savings" stackId="a" fill="#FBBF24" />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    } else if (expandedChart === 'quarter') {
+      chartTitle = 'Quarter Performance (Target vs Realized vs Potential)';
+      chartComponent = (
+        <ResponsiveContainer width="100%" height={500}>
+          <BarChart data={quarterlySavingsData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis tickFormatter={formatCurrency} />
+            <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+            <Legend />
+            <Bar dataKey="Target" fill="#4B5563" />
+            <Bar dataKey="Approved Realized" fill="#16A34A" />
+            <Bar dataKey="Open Potential" fill="#2563EB" />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    } else if (expandedChart === 'fte') {
+      chartTitle = 'Productivity Impact (Quarterly FTE Headcount Savings)';
+      chartComponent = (
+        <ResponsiveContainer width="100%" height={500}>
+          <BarChart data={fteData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip formatter={(value) => `${Number(value).toFixed(1)} FTEs`} />
+            <Legend />
+            <Bar dataKey="Approved FTE" fill="#0284C7" />
+            <Bar dataKey="Open FTE" fill="#38BDF8" />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 9999,
+        padding: '32px'
+      }} onClick={() => setExpandedChart(null)}>
+        <div style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: '16px',
+          width: '90%',
+          maxWidth: '1200px',
+          padding: '24px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: 0 }}>{chartTitle}</h3>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={() => exportChart(`expanded-chart-render-${expandedChart}`, `Lean_Impact_Expanded_${expandedChart}`)}
+                className="btn-export btn-export-primary"
+                style={{ padding: '6px 12px' }}
+              >
+                Export PNG
+              </button>
+              <button 
+                onClick={() => setExpandedChart(null)} 
+                className="btn-export"
+                style={{ padding: '6px 12px', minWidth: '80px' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+          <div id={`expanded-chart-render-${expandedChart}`} style={{ padding: '16px', backgroundColor: '#FFFFFF', borderRadius: '8px' }}>
+            {chartComponent}
+          </div>
+          <div style={{ textAlign: 'center', fontSize: '0.85rem', color: '#6B7280' }}>
+            Press <kbd style={{ padding: '2px 6px', backgroundColor: '#F3F4F6', border: '1px solid #D1D5DB', borderRadius: '4px' }}>ESC</kbd> to close.
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="view-container">
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="skeleton-loading skeleton-kpi" />
-          ))}
+      <div className="view-container" style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '24px' }}>
+        <div className="skeleton-loading" style={{ height: '140px', borderRadius: '12px' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+          <div className="skeleton-loading" style={{ height: '100px', borderRadius: '12px' }} />
+          <div className="skeleton-loading" style={{ height: '100px', borderRadius: '12px' }} />
+          <div className="skeleton-loading" style={{ height: '100px', borderRadius: '12px' }} />
         </div>
-        <div className="skeleton-loading skeleton-chart" style={{ height: '350px' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', height: '500px' }}>
+          <div className="skeleton-loading" style={{ borderRadius: '12px' }} />
+          <div className="skeleton-loading" style={{ borderRadius: '12px' }} />
+        </div>
       </div>
     );
   }
@@ -306,504 +458,226 @@ export const Dashboard: React.FC = () => {
         </div>
         
         <div style={{ flexGrow: 1 }} />
-        <button 
-          onClick={() => exportChart('dashboard-redesign-container', `Lean_Impact_Dashboard_${fiscalYear}_${quarter}`)} 
-          className="btn-export btn-export-primary"
-        >
-          <Download size={16} />
-          <span>Export Executive Report</span>
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            onClick={togglePresentationMode} 
+            className="btn-export"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Activity size={16} />
+            <span>{isPresentation ? 'Exit Presentation' : 'Presentation Mode'}</span>
+          </button>
+          
+          <button 
+            onClick={() => exportChart('dashboard-presentation-container', `Lean_Impact_Dashboard_${fiscalYear}_${quarter}`)} 
+            className="btn-export btn-export-primary"
+          >
+            <Download size={16} />
+            <span>Export Executive Report</span>
+          </button>
+        </div>
       </div>
 
-      <div id="dashboard-redesign-container" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div id="dashboard-presentation-container" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         
-        {/* SECTION 1: EXECUTIVE PERFORMANCE SUMMARY */}
-        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '12px', display: 'block' }}>
-          🎯 Executive Performance Summary ({fiscalYear} - {quarter === 'All' ? 'All Quarters' : quarter})
-        </span>
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-          
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Annual Savings Target</span>
-              <span className="kpi-value">{formatCurrency(annualTarget)}</span>
-              <span className="kpi-subtext">Selected period target goal</span>
+        {/* TOP SECTION: EXECUTIVE PROGRESS BAR */}
+        <div className="card" style={{ padding: '24px', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: 0 }}>
+              Annual Target vs Current Savings Pipeline
+            </h3>
+            <span style={{ fontSize: '0.875rem', fontWeight: 700, padding: '4px 12px', backgroundColor: '#F0F9FF', color: '#0369A1', borderRadius: '9999px' }}>
+              Target FY: {getFyDisplayLabel(fiscalYear)}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Target FY Milestone</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827' }}>{formatCurrency(annualTarget)}</span>
             </div>
-            <div className="kpi-icon-container" style={{ backgroundColor: '#F3F4F6', color: '#1F2937' }}>
-              <Target size={20} />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Current Realized Savings</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Potential Savings</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#2563EB' }}>{formatCurrency(potentialSavings)}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Forecast End of FY</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F766E' }}>{formatCurrency(expectedFinalSavings)}</span>
             </div>
           </div>
 
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Realized Savings</span>
-              <span className="kpi-value" style={{ color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
-              <span className="kpi-subtext">Approved project savings</span>
-            </div>
-            <div className="kpi-icon-container" style={{ backgroundColor: '#DCFCE7', color: '#15803D' }}>
-              <DollarSign size={20} />
-            </div>
-          </div>
-
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Potential Savings</span>
-              <span className="kpi-value" style={{ color: '#2563EB' }}>{formatCurrency(potentialSavings)}</span>
-              <span className="kpi-subtext">Open pipeline savings</span>
-            </div>
-            <div className="kpi-icon-container" style={{ backgroundColor: '#DBEAFE', color: '#1D4ED8' }}>
-              <TrendingUp size={20} />
-            </div>
-          </div>
-
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Achievement %</span>
-              <span className="kpi-value">{achievementPercent.toFixed(1)}%</span>
-              <span className="kpi-subtext">Realized vs Target Goal</span>
-            </div>
-            <div className="kpi-icon-container" style={{ backgroundColor: '#F3F4F6', color: '#1F2937' }}>
-              <Percent size={20} />
-            </div>
-          </div>
-
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Forecast Achievement %</span>
-              <span className="kpi-value" style={{ color: forecastAchievementPercent >= 100 ? '#16A34A' : '#D97706' }}>
-                {forecastAchievementPercent.toFixed(1)}%
-              </span>
-              <span className="kpi-subtext">Forecast vs Target Goal</span>
-            </div>
-            <div className="kpi-icon-container" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
-              <Activity size={20} />
-            </div>
-          </div>
-
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Savings Deficit Gap</span>
-              <span className="kpi-value" style={{ color: savingsGap > 0 ? '#DC2626' : '#16A34A' }}>
-                {savingsGap > 0 ? formatCurrency(savingsGap) : 'Goal Reached!'}
-              </span>
-              <span className="kpi-subtext">Deficit to period target</span>
-            </div>
-            <div className="kpi-icon-container" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>
-              <AlertTriangle size={20} />
-            </div>
-          </div>
-
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Approved Projects</span>
-              <span className="kpi-value">{approvedCount}</span>
-              <span className="kpi-subtext">Completed project tracks</span>
-            </div>
-            <div className="kpi-icon-container" style={{ backgroundColor: '#F3F4F6', color: '#1F2937' }}>
-              <CheckCircle size={20} />
-            </div>
-          </div>
-
-          <div className="kpi-widget">
-            <div className="kpi-details">
-              <span className="kpi-title">Open Projects</span>
-              <span className="kpi-value">{openCount}</span>
-              <span className="kpi-subtext">Pipeline projects count</span>
-            </div>
-            <div className="kpi-icon-container" style={{ backgroundColor: '#F3F4F6', color: '#1F2937' }}>
-              <Briefcase size={20} />
-            </div>
-          </div>
-
-        </div>
-
-        {/* SECTION 2: SAVINGS IMPACT DETAILED BREAKDOWN */}
-        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '16px', display: 'block' }}>
-          💼 Savings & Impact Detailed Breakdown (Realized + Potential)
-        </span>
-
-        {/* Group A: Financial Savings */}
-        <div style={{ marginTop: '12px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            💰 Financial Savings (Counts toward Target Achievement)
-          </span>
-          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div className="kpi-widget" style={{ backgroundColor: '#F0FDF4', borderLeft: '4px solid #16A34A' }}>
-              <div className="kpi-details">
-                <span className="kpi-title" style={{ color: '#14532D' }}>Target-Qualifying Savings</span>
-                <span className="kpi-value" style={{ color: '#16A34A' }}>{formatCurrency(totalSavings)}</span>
-                <span className="kpi-subtext">OP + One-Time Savings</span>
-              </div>
-            </div>
-            <div className="kpi-widget">
-              <div className="kpi-details">
-                <span className="kpi-title">OP Contribution</span>
-                <span className="kpi-value">{formatCurrency(totalOp)}</span>
-                <span className="kpi-subtext">Operational savings</span>
-              </div>
-            </div>
-            <div className="kpi-widget">
-              <div className="kpi-details">
-                <span className="kpi-title">One Time Savings</span>
-                <span className="kpi-value">{formatCurrency(totalOneTime)}</span>
-                <span className="kpi-subtext">One-time event savings</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Group B: Operational Impact */}
-        <div style={{ marginTop: '20px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            ⚙️ Operational Impact (Informational Metrics Only)
-          </span>
-          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
-              <div className="kpi-details">
-                <span className="kpi-title">Soft Savings</span>
-                <span className="kpi-value">{formatCurrency(totalSoft)}</span>
-                <span className="kpi-subtext">Methodology savings</span>
-              </div>
-            </div>
-            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
-              <div className="kpi-details">
-                <span className="kpi-title">Inventory ARAP Savings</span>
-                <span className="kpi-value">{formatCurrency(totalInventory)}</span>
-                <span className="kpi-subtext">Inventory reduction</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Group C: Productivity Impact */}
-        <div style={{ marginTop: '20px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            👥 Productivity Impact (Non-Financial)
-          </span>
-          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '4px solid #0284C7' }}>
-              <div className="kpi-details">
-                <span className="kpi-title" style={{ color: '#0369A1' }}>FTE Headcount Savings</span>
-                <span className="kpi-value" style={{ color: '#0284C7' }}>{totalFte.toFixed(1)} FTEs</span>
-                <span className="kpi-subtext">Excludes from monetary calculations</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 3: APPROVED PROJECTS (REALIZED BREAKDOWN) */}
-        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '24px', display: 'block' }}>
-          ✅ Approved Projects (Realized Savings Breakdown)
-        </span>
-        <div style={{ marginTop: '12px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            💰 Financial Savings (Realized)
-          </span>
-          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div className="kpi-widget" style={{ backgroundColor: '#F0FDF4', borderLeft: '4px solid #16A34A' }}>
-              <div className="kpi-details">
-                <span className="kpi-title" style={{ color: '#14532D' }}>Realized Savings Total</span>
-                <span className="kpi-value" style={{ color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
-                <span className="kpi-subtext">OP + One-Time approved</span>
-              </div>
-            </div>
-            <div className="kpi-widget">
-              <div className="kpi-details">
-                <span className="kpi-title">OP Contribution Total</span>
-                <span className="kpi-value">{formatCurrency(realizedOp)}</span>
-                <span className="kpi-subtext">Operational actuals</span>
-              </div>
-            </div>
-            <div className="kpi-widget">
-              <div className="kpi-details">
-                <span className="kpi-title">One Time Savings Total</span>
-                <span className="kpi-value">{formatCurrency(realizedOneTime)}</span>
-                <span className="kpi-subtext">One-time actuals</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: '20px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            ⚙️ Operational Impact (Realized Informational)
-          </span>
-          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
-              <div className="kpi-details">
-                <span className="kpi-title">Soft Savings Total</span>
-                <span className="kpi-value">{formatCurrency(realizedSoft)}</span>
-                <span className="kpi-subtext">Soft savings actuals</span>
-              </div>
-            </div>
-            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
-              <div className="kpi-details">
-                <span className="kpi-title">Inventory Savings Total</span>
-                <span className="kpi-value">{formatCurrency(realizedInventory)}</span>
-                <span className="kpi-subtext">Inventory actuals</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: '20px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            👥 Productivity Impact (Realized Non-Financial)
-          </span>
-          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '4px solid #0284C7' }}>
-              <div className="kpi-details">
-                <span className="kpi-title" style={{ color: '#0369A1' }}>FTE Savings Total</span>
-                <span className="kpi-value" style={{ color: '#0284C7' }}>{realizedFte.toFixed(1)} FTEs</span>
-                <span className="kpi-subtext">FTE reductions actuals</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 4: OPEN PROJECTS (POTENTIAL BREAKDOWN) */}
-        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '24px', display: 'block' }}>
-          ⏳ Open Pipeline (Potential Savings Breakdown)
-        </span>
-        <div style={{ marginTop: '12px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            💰 Financial Savings (Potential)
-          </span>
-          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div className="kpi-widget" style={{ backgroundColor: '#EFF6FF', borderLeft: '4px solid #2563EB' }}>
-              <div className="kpi-details">
-                <span className="kpi-title" style={{ color: '#1E3A8A' }}>Potential Total Savings</span>
-                <span className="kpi-value" style={{ color: '#2563EB' }}>{formatCurrency(potentialSavings)}</span>
-                <span className="kpi-subtext">OP + One-Time open</span>
-              </div>
-            </div>
-            <div className="kpi-widget">
-              <div className="kpi-details">
-                <span className="kpi-title">Potential OP</span>
-                <span className="kpi-value">{formatCurrency(potentialOp)}</span>
-                <span className="kpi-subtext">OP contributions pipeline</span>
-              </div>
-            </div>
-            <div className="kpi-widget">
-              <div className="kpi-details">
-                <span className="kpi-title">Potential One Time Savings</span>
-                <span className="kpi-value">{formatCurrency(potentialOneTime)}</span>
-                <span className="kpi-subtext">One-time pipeline savings</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: '20px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            ⚙️ Operational Impact (Potential Informational)
-          </span>
-          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
-              <div className="kpi-details">
-                <span className="kpi-title">Potential Soft Savings</span>
-                <span className="kpi-value">{formatCurrency(potentialSoft)}</span>
-                <span className="kpi-subtext">Soft pipeline savings</span>
-              </div>
-            </div>
-            <div className="kpi-widget" style={{ backgroundColor: '#F9FAFB', borderLeft: '4px solid #6B7280' }}>
-              <div className="kpi-details">
-                <span className="kpi-title">Potential Inventory Savings</span>
-                <span className="kpi-value">{formatCurrency(potentialInventory)}</span>
-                <span className="kpi-subtext">Inventory pipeline reduction</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: '20px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            👥 Productivity Impact (Potential Non-Financial)
-          </span>
-          <div className="kpi-grid" style={{ marginTop: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-            <div className="kpi-widget" style={{ backgroundColor: '#F0F9FF', borderLeft: '4px solid #0284C7' }}>
-              <div className="kpi-details">
-                <span className="kpi-title" style={{ color: '#0369A1' }}>Potential FTE Savings</span>
-                <span className="kpi-value" style={{ color: '#0284C7' }}>{potentialFte.toFixed(1)} FTEs</span>
-                <span className="kpi-subtext">FTE pipeline reductions</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Executive Savings Forecasting Gauge Card */}
-        <div className="card" id="gauge-redesign" style={{ marginTop: '12px' }}>
-          <div className="card-header-row">
-            <span className="card-title">Savings Target Achievement Forecast ({fiscalYear} {quarter !== 'All' ? quarter : ''})</span>
-            <button 
-              onClick={() => exportChart('gauge-redesign', `Savings_Progress_Gauge_${fiscalYear}_${quarter}`)} 
-              className="btn-export"
-              title="Export Gauge"
-            >
-              <Download size={14} />
-            </button>
-          </div>
-
-          <div className="gauge-header-details">
-            <div className="gauge-kpi-item">
-              <span className="gauge-kpi-lbl">Target Goal</span>
-              <span className="gauge-kpi-val" style={{ color: '#EF4444' }}>{formatCurrency(annualTarget)}</span>
-            </div>
-            <div className="gauge-kpi-item">
-              <span className="gauge-kpi-lbl">Approved Realized</span>
-              <span className="gauge-kpi-val" style={{ color: '#10B981' }}>{formatCurrency(realizedSavings)}</span>
-            </div>
-            <div className="gauge-kpi-item">
-              <span className="gauge-kpi-lbl">Open Potential</span>
-              <span className="gauge-kpi-val" style={{ color: '#3B82F6' }}>{formatCurrency(potentialSavings)}</span>
-            </div>
-            <div className="gauge-kpi-item">
-              <span className="gauge-kpi-lbl">Remaining Deficit</span>
-              <span className="gauge-kpi-val" style={{ color: savingsGap > 0 ? '#EF4444' : '#10B981' }}>
-                {savingsGap > 0 ? formatCurrency(savingsGap) : 'Achieved!'}
-              </span>
-            </div>
-          </div>
-
-          <div className="progress-gauge-container">
+          <div style={{ width: '100%', height: '24px', backgroundColor: '#E5E7EB', borderRadius: '12px', overflow: 'hidden', display: 'flex', position: 'relative' }}>
             <div 
-              className="gauge-bar-realized" 
-              style={{ width: `${realizedPercent}%` }}
-              title={`Realized: ${formatCurrency(realizedSavings)} (${achievementPercent.toFixed(1)}%)`}
-            >
-              {realizedPercent > 8 ? `${achievementPercent.toFixed(0)}% Realized` : ''}
-            </div>
+              style={{ 
+                width: `${realizedPercent}%`, 
+                height: '100%', 
+                backgroundColor: '#16A34A', 
+                transition: 'width 0.5s ease-in-out' 
+              }} 
+              title={`Realized Savings: ${realizedPercent.toFixed(1)}%`}
+            />
             <div 
-              className="gauge-bar-potential" 
-              style={{ width: `${potentialPercent}%` }}
-              title={`Potential: ${formatCurrency(potentialSavings)}`}
-            >
-              {potentialPercent > 8 ? `+${(forecastAchievementPercent - achievementPercent).toFixed(0)}% Pipeline` : ''}
-            </div>
-          </div>
-
-          <div className="progress-gauge-markers">
-            <div className="gauge-marker">
-              <div className="gauge-marker-dot" />
-              <span>0%</span>
-            </div>
-            <div className="gauge-marker" style={{ position: 'absolute', left: `${Math.min(95, realizedPercent)}%`, transform: 'translateX(-50%)' }}>
-              <div className="gauge-marker-dot" style={{ backgroundColor: '#10B981' }} />
-              <span>Realized</span>
-            </div>
-            {annualTarget > 0 && expectedFinalSavings < annualTarget ? (
-              <div className="gauge-marker target" style={{ position: 'absolute', left: '100%' }}>
-                <div className="gauge-marker-dot" />
-                <span>Target (100%)</span>
-              </div>
-            ) : (
-              <div className="gauge-marker target" style={{ position: 'absolute', left: `${(annualTarget / maxBarVal) * 100}%`, transform: 'translateX(-50%)' }}>
-                <div className="gauge-marker-dot" />
-                <span>Target (100%)</span>
-              </div>
+              style={{ 
+                width: `${potentialPercent}%`, 
+                height: '100%', 
+                backgroundColor: '#3B82F6', 
+                transition: 'width 0.5s ease-in-out' 
+              }} 
+              title={`Potential Savings: ${potentialPercent.toFixed(1)}%`}
+            />
+            {realizedSavings + potentialSavings < annualTarget && (
+              <div 
+                style={{ 
+                  flexGrow: 1, 
+                  height: '100%', 
+                  backgroundColor: '#FEE2E2', 
+                  backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, #FCA5A5 10px, #FCA5A5 20px)',
+                  opacity: 0.8
+                }} 
+                title={`Target Deficit Gap: ${formatCurrency(savingsGap)}`}
+              />
             )}
           </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.75rem', color: '#6B7280', fontWeight: 600 }}>
+            <span>0%</span>
+            <span>Forecast Achieved: {forecastAchievementPercent.toFixed(1)}%</span>
+            <span>100% Target Milestone</span>
+          </div>
         </div>
 
-        {/* 4 Stacked Visualizations */}
-        <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1F2937', marginTop: '16px', display: 'block' }}>
-          📊 Detailed Savings stacked Visualizations
-        </span>
-        <div className="dashboard-main-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))' }}>
+        {/* SUMMARY ROW: THREE EXECUTIVE CARDS */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid #10B981', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closed Projects</span>
+            <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{approvedCount}</span>
+            <span style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 600 }}>Approved and realized impact</span>
+          </div>
+          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid #3B82F6', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Projects</span>
+            <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{openCount}</span>
+            <span style={{ fontSize: '0.75rem', color: '#3B82F6', fontWeight: 600 }}>Active open pipeline</span>
+          </div>
+          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid #0F766E', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Qualified Savings</span>
+            <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0F766E', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
+            <span style={{ fontSize: '0.75rem', color: '#0F766E', fontWeight: 600 }}>Target-Qualifying (OP + One-Time)</span>
+          </div>
+        </div>
+
+        {/* MAIN ANALYTICS GRID: 2x2 CHART TILES */}
+        <div className="dashboard-grid-2x2">
           
-          {/* Chart 1: Realized Savings by Type */}
-          <div className="card" id="realized-type-card">
-            <div className="card-header-row">
-              <span className="card-title">Realized Savings by Type (Approved Month Trend)</span>
-              <button onClick={() => exportChart('realized-type-card', `Realized_Savings_by_Type_${fiscalYear}`)} className="btn-export">
-                <Download size={14} />
+          {/* Card 1: Savings Waterfall Chart */}
+          <div className="card" id="waterfall-chart-tile" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Savings Waterfall Chart</span>
+              <button 
+                onClick={() => setExpandedChart('waterfall')} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Expand
               </button>
             </div>
-            <div style={{ width: '100%', height: 300 }}>
+            <div style={{ width: '100%', height: 320 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={waterfallData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <Tooltip content={renderWaterfallTooltip} />
+                  <Bar dataKey="base" stackId="a" fill="transparent" />
+                  <Bar dataKey="value" stackId="a">
+                    {waterfallData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Card 2: Monthly Savings Breakdown */}
+          <div className="card" id="monthly-chart-tile" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Monthly Savings Breakdown</span>
+              <button 
+                onClick={() => setExpandedChart('monthly')} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Expand
+              </button>
+            </div>
+            <div style={{ width: '100%', height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={realizedByTypeData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="name" stroke="#6B7280" tickLine={false} />
-                  <YAxis stroke="#6B7280" tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                  <Legend />
-                  <Bar dataKey="OP Contribution" fill="#22C55E" stackId="realized" />
-                  <Bar dataKey="Soft Savings" fill="#3B82F6" stackId="realized" />
-                  <Bar dataKey="Inventory Savings" fill="#EAB308" stackId="realized" />
-                  <Bar dataKey="One Time Savings" fill="#EC4899" stackId="realized" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Bar dataKey="OP Contribution" stackId="a" fill="#16A34A" />
+                  <Bar dataKey="One Time Savings" stackId="a" fill="#3B82F6" />
+                  <Bar dataKey="Soft Savings" stackId="a" fill="#9CA3AF" />
+                  <Bar dataKey="Inventory Savings" stackId="a" fill="#FBBF24" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Chart 2: Potential Savings by Type */}
-          <div className="card" id="potential-type-card">
-            <div className="card-header-row">
-              <span className="card-title">Potential Savings by Type (Open Month Trend)</span>
-              <button onClick={() => exportChart('potential-type-card', `Potential_Savings_by_Type_${fiscalYear}`)} className="btn-export">
-                <Download size={14} />
+          {/* Card 3: Quarter Performance */}
+          <div className="card" id="quarter-chart-tile" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Quarter Performance</span>
+              <button 
+                onClick={() => setExpandedChart('quarter')} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Expand
               </button>
             </div>
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={potentialByTypeData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="name" stroke="#6B7280" tickLine={false} />
-                  <YAxis stroke="#6B7280" tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                  <Legend />
-                  <Bar dataKey="OP Contribution" fill="#86EFAC" stackId="potential" />
-                  <Bar dataKey="Soft Savings" fill="#93C5FD" stackId="potential" />
-                  <Bar dataKey="Inventory Savings" fill="#FEF08A" stackId="potential" />
-                  <Bar dataKey="One Time Savings" fill="#FBCFE8" stackId="potential" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Chart 3: Savings by Quarter */}
-          <div className="card" id="quarterly-savings-card">
-            <div className="card-header-row">
-              <span className="card-title">Savings by Quarter ({fiscalYear})</span>
-              <button onClick={() => exportChart('quarterly-savings-card', `Savings_by_Quarter_${fiscalYear}`)} className="btn-export">
-                <Download size={14} />
-              </button>
-            </div>
-            <div style={{ width: '100%', height: 300 }}>
+            <div style={{ width: '100%', height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={quarterlySavingsData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="name" stroke="#6B7280" tickLine={false} />
-                  <YAxis stroke="#6B7280" tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                  <Legend />
-                  <Bar dataKey="Target" fill="#1F2937" name="Target Goal" />
-                  <Bar dataKey="Approved Realized" fill="#22C55E" name="Approved Realized" />
-                  <Bar dataKey="Open Potential" fill="#86EFAC" name="Open Potential" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Bar dataKey="Target" fill="#4B5563" />
+                  <Bar dataKey="Approved Realized" fill="#16A34A" />
+                  <Bar dataKey="Open Potential" fill="#2563EB" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Chart 4: Savings by FY */}
-          <div className="card" id="yearly-savings-card">
-            <div className="card-header-row">
-              <span className="card-title">Savings by FY Comparison</span>
-              <button onClick={() => exportChart('yearly-savings-card', `Savings_by_FY`)} className="btn-export">
-                <Download size={14} />
+          {/* Card 4: FTE Performance */}
+          <div className="card" id="fte-chart-tile" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Productivity Impact (FTE Savings)</span>
+              <button 
+                onClick={() => setExpandedChart('fte')} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Expand
               </button>
             </div>
-            <div style={{ width: '100%', height: 300 }}>
+            <div style={{ width: '100%', height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={yearlySavingsData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="name" stroke="#6B7280" tickLine={false} />
-                  <YAxis stroke="#6B7280" tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                  <Legend />
-                  <Bar dataKey="Target" fill="#1F2937" name="Target Goal" />
-                  <Bar dataKey="Approved Realized" fill="#22C55E" name="Approved Realized" />
-                  <Bar dataKey="Open Potential" fill="#86EFAC" name="Open Potential" />
+                <BarChart data={fteData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value) => `${Number(value).toFixed(1)} FTEs`} />
+                  <Bar dataKey="Approved FTE" fill="#0284C7" />
+                  <Bar dataKey="Open FTE" fill="#38BDF8" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -812,6 +686,9 @@ export const Dashboard: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Full-screen chart expansion overlay portal */}
+      {renderExpandedChartModal()}
     </div>
   );
 };
