@@ -236,7 +236,7 @@ export const Facilitators: React.FC = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6B7280' }}>
               <Users size={40} style={{ marginBottom: '8px', color: '#9CA3AF' }} />
-              <span style={{ fontSize: '0.85rem' }}>No project data available for FY{fiscalYear}</span>
+              <span style={{ fontSize: '0.85rem' }}>No project data available for {fiscalYear.startsWith('FY') ? fiscalYear : `FY${fiscalYear}`}</span>
             </div>
           )}
         </div>

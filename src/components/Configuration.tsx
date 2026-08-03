@@ -831,7 +831,7 @@ export const Configuration: React.FC = () => {
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {targetList.map(t => (
                     <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '6px', borderBottom: '1px dashed var(--color-border)' }}>
-                      <span style={{ fontWeight: 600 }}>FY{t.fiscal_year} - {t.quarter}</span>
+                      <span style={{ fontWeight: 600 }}>{t.fiscal_year.startsWith('FY') ? t.fiscal_year : `FY${t.fiscal_year}`} - {t.quarter}</span>
                       <span style={{ color: '#15803D', fontWeight: 700 }}>{formatCurrency(t.target_amount)}</span>
                     </li>
                   ))}
