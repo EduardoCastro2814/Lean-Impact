@@ -348,8 +348,14 @@ export const Projects: React.FC = () => {
     top: 0,
     zIndex: 15,
     backgroundColor: '#F3F4F6',
+    width: '240px',
     minWidth: '240px',
-    textAlign: 'left' as const
+    maxWidth: '240px',
+    textAlign: 'left' as const,
+    borderRight: '1px solid #E5E7EB',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const
   };
 
   const stickyHeaderCustomerStyle = {
@@ -358,8 +364,14 @@ export const Projects: React.FC = () => {
     top: 0,
     zIndex: 15,
     backgroundColor: '#F3F4F6',
+    width: '120px',
     minWidth: '120px',
-    textAlign: 'left' as const
+    maxWidth: '120px',
+    textAlign: 'left' as const,
+    borderRight: '1px solid #E5E7EB',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const
   };
 
   const stickyHeaderIdStyle = {
@@ -368,9 +380,15 @@ export const Projects: React.FC = () => {
     top: 0,
     zIndex: 15,
     backgroundColor: '#F3F4F6',
+    width: '120px',
     minWidth: '120px',
+    maxWidth: '120px',
     boxShadow: '2px 0 5px -2px rgba(0,0,0,0.15)',
-    textAlign: 'left' as const
+    textAlign: 'left' as const,
+    borderRight: '1px solid #E5E7EB',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const
   };
 
   const stickyCellTitleStyle = (isEven: boolean, isRecon: boolean) => ({
@@ -378,9 +396,16 @@ export const Projects: React.FC = () => {
     left: 0,
     zIndex: 5,
     backgroundColor: isRecon ? '#FFFBEB' : (isEven ? '#FFFFFF' : '#F9FAFB'),
+    width: '240px',
     minWidth: '240px',
+    maxWidth: '240px',
     fontWeight: 600,
-    textAlign: 'left' as const
+    textAlign: 'left' as const,
+    borderRight: '1px solid #E5E7EB',
+    borderBottom: '1px solid #E5E7EB',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const
   });
 
   const stickyCellCustomerStyle = (isEven: boolean, isRecon: boolean) => ({
@@ -388,8 +413,15 @@ export const Projects: React.FC = () => {
     left: '240px',
     zIndex: 5,
     backgroundColor: isRecon ? '#FFFBEB' : (isEven ? '#FFFFFF' : '#F9FAFB'),
+    width: '120px',
     minWidth: '120px',
-    textAlign: 'left' as const
+    maxWidth: '120px',
+    textAlign: 'left' as const,
+    borderRight: '1px solid #E5E7EB',
+    borderBottom: '1px solid #E5E7EB',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const
   });
 
   const stickyCellIdStyle = (isEven: boolean, isRecon: boolean) => ({
@@ -397,10 +429,17 @@ export const Projects: React.FC = () => {
     left: '360px',
     zIndex: 5,
     backgroundColor: isRecon ? '#FFFBEB' : (isEven ? '#FFFFFF' : '#F9FAFB'),
+    width: '120px',
     minWidth: '120px',
+    maxWidth: '120px',
     fontWeight: 700,
     boxShadow: '2px 0 5px -2px rgba(0,0,0,0.15)',
-    textAlign: 'left' as const
+    textAlign: 'left' as const,
+    borderRight: '1px solid #E5E7EB',
+    borderBottom: '1px solid #E5E7EB',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const
   });
 
   const stickyTotalsTitleStyle = {
@@ -408,9 +447,16 @@ export const Projects: React.FC = () => {
     left: 0,
     zIndex: 5,
     backgroundColor: '#F3F4F6',
+    width: '240px',
     minWidth: '240px',
+    maxWidth: '240px',
     fontWeight: 800,
-    textAlign: 'left' as const
+    textAlign: 'left' as const,
+    borderRight: '1px solid #E5E7EB',
+    borderBottom: '1px solid #E5E7EB',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const
   };
 
   const stickyTotalsCustomerStyle = {
@@ -418,8 +464,15 @@ export const Projects: React.FC = () => {
     left: '240px',
     zIndex: 5,
     backgroundColor: '#F3F4F6',
+    width: '120px',
     minWidth: '120px',
-    textAlign: 'left' as const
+    maxWidth: '120px',
+    textAlign: 'left' as const,
+    borderRight: '1px solid #E5E7EB',
+    borderBottom: '1px solid #E5E7EB',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const
   };
 
   const stickyTotalsIdStyle = {
@@ -427,9 +480,16 @@ export const Projects: React.FC = () => {
     left: '360px',
     zIndex: 5,
     backgroundColor: '#F3F4F6',
+    width: '120px',
     minWidth: '120px',
+    maxWidth: '120px',
     boxShadow: '2px 0 5px -2px rgba(0,0,0,0.15)',
-    textAlign: 'left' as const
+    textAlign: 'left' as const,
+    borderRight: '1px solid #E5E7EB',
+    borderBottom: '1px solid #E5E7EB',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const
   };
 
   const quarterColStyle = { 
@@ -715,12 +775,14 @@ export const Projects: React.FC = () => {
           <div 
             ref={topScrollRef}
             onScroll={syncScrollTop}
+            className="top-scrollbar-container"
             style={{ 
               overflowX: 'auto', 
               overflowY: 'hidden', 
               width: '100%', 
               maxWidth: '100%',
-              height: '14px', 
+              height: '18px', 
+              minHeight: '18px',
               backgroundColor: '#F9FAFB',
               border: '1px solid #E5E7EB',
               borderBottom: 'none',
@@ -737,7 +799,7 @@ export const Projects: React.FC = () => {
             className="table-container" 
             style={{ 
               overflow: 'auto', 
-              maxHeight: '600px', 
+              maxHeight: 'calc(100vh - 360px)', 
               width: '100%',
               maxWidth: '100%',
               border: '1px solid #E5E7EB', 
@@ -953,12 +1015,14 @@ export const Projects: React.FC = () => {
               <div 
                 ref={expandedTopScrollRef}
                 onScroll={syncScrollExpandedTop}
+                className="top-scrollbar-container"
                 style={{ 
                   overflowX: 'auto', 
                   overflowY: 'hidden', 
                   width: '100%', 
                   maxWidth: '100%',
-                  height: '14px', 
+                  height: '18px', 
+                  minHeight: '18px',
                   backgroundColor: '#F9FAFB',
                   border: '1px solid #E5E7EB',
                   borderBottom: 'none',
@@ -973,8 +1037,9 @@ export const Projects: React.FC = () => {
             <div 
               ref={expandedTableContainerRef}
               onScroll={syncScrollExpandedTable}
+              className="table-container"
               style={{ 
-                flex: 1, 
+                maxHeight: 'calc(100vh - 150px)', 
                 overflow: 'auto', 
                 border: '1px solid #E5E7EB', 
                 borderRadius: projectsListWithRecon.length > 0 ? '0 0 8px 8px' : '8px' 

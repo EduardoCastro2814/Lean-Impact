@@ -1050,3 +1050,25 @@ body {
   width: 100vw;
   height: 100vh;
 }
+
+/* Premium horizontal/vertical scrollbars for Projects table layout */
+.table-container::-webkit-scrollbar,
+.top-scrollbar-container::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.table-container::-webkit-scrollbar-track,
+.top-scrollbar-container::-webkit-scrollbar-track {
+  background: #F9FAFB;
+  border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb,
+.top-scrollbar-container::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+  border: 1px solid #F9FAFB;
+}
+.table-container::-webkit-scrollbar-thumb:hover,
+.top-scrollbar-container::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
