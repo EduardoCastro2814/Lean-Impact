@@ -9,7 +9,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { dbService, getProjectPeriodSavings, getFiscalMonthIndex } from '../lib/supabaseClient';
+import { dbService, getProjectPeriodSavings } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {

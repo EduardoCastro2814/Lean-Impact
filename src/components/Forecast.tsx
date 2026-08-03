@@ -22,7 +22,7 @@ import {
   ReferenceLine
 } from 'recharts';
 import html2canvas from 'html2canvas';
-import { dbService, getFyDisplayLabel, getFiscalMonthIndex, getProjectPeriodSavings } from '../lib/supabaseClient';
+import { dbService, getFyDisplayLabel, getProjectPeriodSavings } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen, SavingsTarget } from '../lib/supabaseClient';
 
 const formatCurrency = (val: number) => {
