@@ -172,7 +172,17 @@ export const dbService = {
     return data || [];
   },
 
-  async importApprovedProjects(projects: Omit<ProjectApproved, 'id' | 'created_at'>[]): Promise<{ inserted: number; updated: number }> {
+  async importApprovedProjects(projects: Omit<ProjectApproved, 'id' | 'created_at'>[], fiscalYear: string): Promise<{ inserted: number; updated: number }> {
+    // Delete all existing records for the selected fiscal year
+    const { error: deleteError } = await supabase
+      .from('projects_approved')
+      .delete()
+      .eq('fiscal_year', fiscalYear);
+
+    if (deleteError) throw deleteError;
+
+    if (projects.length === 0) return { inserted: 0, updated: 0 };
+
     const dbProjects = projects.map((p: any) => ({
       project_id: String(p.project_id || '').trim(),
       project_title: String(p.project_title || '').trim(),
@@ -219,7 +229,17 @@ export const dbService = {
     return data || [];
   },
 
-  async importOpenProjects(projects: Omit<ProjectOpen, 'id' | 'created_at'>[]): Promise<{ inserted: number; updated: number }> {
+  async importOpenProjects(projects: Omit<ProjectOpen, 'id' | 'created_at'>[], fiscalYear: string): Promise<{ inserted: number; updated: number }> {
+    // Delete all existing records for the selected fiscal year
+    const { error: deleteError } = await supabase
+      .from('projects_open')
+      .delete()
+      .eq('fiscal_year', fiscalYear);
+
+    if (deleteError) throw deleteError;
+
+    if (projects.length === 0) return { inserted: 0, updated: 0 };
+
     const dbProjects = projects.map((p: any) => ({
       project_id: String(p.project_id || '').trim(),
       project_title: String(p.project_title || '').trim(),

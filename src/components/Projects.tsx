@@ -22,19 +22,6 @@ const formatCurrency = (val: number) => {
   }).format(val);
 };
 
-const getFiscalMonthLabel = (dateStr: string): string => {
-  if (!dateStr) return 'N/A';
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  const cleanDate = dateStr.substring(0, 10);
-  const parts = cleanDate.split('-');
-  if (parts.length < 2) return 'N/A';
-  const m = parseInt(parts[1], 10) - 1;
-  return monthNames[m] || 'N/A';
-};
-
 const getProjectSingleMonthSavings = (p: any, m: number): number => {
   const dateStr = p.approval_date || p.created_date;
   if (!dateStr) return 0;
@@ -229,7 +216,6 @@ export const Projects: React.FC = () => {
 
       return {
         'Project Title': p.project_title,
-        'Month': p.approval_date ? getFiscalMonthLabel(p.approval_date) : 'N/A',
         'Customer': p.customer || 'N/A',
         'Project ID': p.project_id,
         'OP Contribution': p.op_contribution * (12 - getFiscalMonthIndex(p.approval_date || p.created_date)),
@@ -257,7 +243,6 @@ export const Projects: React.FC = () => {
     // Totals row for Excel
     const totalsRow = {
       'Project Title': 'TOTALS',
-      'Month': '',
       'Customer': '',
       'Project ID': '',
       'OP Contribution': totalOp,
@@ -288,7 +273,6 @@ export const Projects: React.FC = () => {
     
     worksheet['!cols'] = [
       { wch: 30 }, // Project Title
-      { wch: 12 }, // Month
       { wch: 15 }, // Customer
       { wch: 15 }, // Project ID
       { wch: 15 }, // OP Contribution
@@ -296,30 +280,99 @@ export const Projects: React.FC = () => {
       ...Array(17).fill({ wch: 10 })
     ];
 
-    XLSX.writeFile(workbook, `Lean_Impact_${fiscalYear}_${activeTab === 'approved' ? 'Approved' : 'Open'}_Waterfall.xlsx`);
+    XLSX.writeFile(workbook, `LeanImpact_ProjectsWaterfall_${fiscalYear}.xlsx`);
   };
 
   // Styles for highlights
   const stickyHeaderTitleStyle = {
     position: 'sticky' as const,
     left: 0,
+    top: 0,
     zIndex: 15,
     backgroundColor: '#F3F4F6',
     minWidth: '240px',
-    boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)',
     textAlign: 'left' as const
   };
 
-  const stickyCellTitleStyle = (isEven: boolean) => ({
+  const stickyHeaderCustomerStyle = {
+    position: 'sticky' as const,
+    left: '240px',
+    top: 0,
+    zIndex: 15,
+    backgroundColor: '#F3F4F6',
+    minWidth: '120px',
+    textAlign: 'left' as const
+  };
+
+  const stickyHeaderIdStyle = {
+    position: 'sticky' as const,
+    left: '360px',
+    top: 0,
+    zIndex: 15,
+    backgroundColor: '#F3F4F6',
+    minWidth: '120px',
+    boxShadow: '2px 0 5px -2px rgba(0,0,0,0.15)',
+    textAlign: 'left' as const
+  };
+
+  const stickyCellTitleStyle = (isEven: boolean, isRecon: boolean) => ({
     position: 'sticky' as const,
     left: 0,
     zIndex: 5,
-    backgroundColor: isEven ? '#FFFFFF' : '#F9FAFB',
+    backgroundColor: isRecon ? '#FFFBEB' : (isEven ? '#FFFFFF' : '#F9FAFB'),
     minWidth: '240px',
     fontWeight: 600,
-    boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)',
     textAlign: 'left' as const
   });
+
+  const stickyCellCustomerStyle = (isEven: boolean, isRecon: boolean) => ({
+    position: 'sticky' as const,
+    left: '240px',
+    zIndex: 5,
+    backgroundColor: isRecon ? '#FFFBEB' : (isEven ? '#FFFFFF' : '#F9FAFB'),
+    minWidth: '120px',
+    textAlign: 'left' as const
+  });
+
+  const stickyCellIdStyle = (isEven: boolean, isRecon: boolean) => ({
+    position: 'sticky' as const,
+    left: '360px',
+    zIndex: 5,
+    backgroundColor: isRecon ? '#FFFBEB' : (isEven ? '#FFFFFF' : '#F9FAFB'),
+    minWidth: '120px',
+    fontWeight: 700,
+    boxShadow: '2px 0 5px -2px rgba(0,0,0,0.15)',
+    textAlign: 'left' as const
+  });
+
+  const stickyTotalsTitleStyle = {
+    position: 'sticky' as const,
+    left: 0,
+    zIndex: 5,
+    backgroundColor: '#F3F4F6',
+    minWidth: '240px',
+    fontWeight: 800,
+    textAlign: 'left' as const
+  };
+
+  const stickyTotalsCustomerStyle = {
+    position: 'sticky' as const,
+    left: '240px',
+    zIndex: 5,
+    backgroundColor: '#F3F4F6',
+    minWidth: '120px',
+    textAlign: 'left' as const
+  };
+
+  const stickyTotalsIdStyle = {
+    position: 'sticky' as const,
+    left: '360px',
+    zIndex: 5,
+    backgroundColor: '#F3F4F6',
+    minWidth: '120px',
+    boxShadow: '2px 0 5px -2px rgba(0,0,0,0.15)',
+    textAlign: 'left' as const
+  };
 
   const quarterColStyle = { 
     backgroundColor: '#F0F9FF', 
@@ -342,9 +395,8 @@ export const Projects: React.FC = () => {
         <thead>
           <tr style={{ backgroundColor: '#F3F4F6' }}>
             <th style={stickyHeaderTitleStyle}>Project Title</th>
-            <th style={{ minWidth: '110px' }}>Month</th>
-            <th style={{ minWidth: '120px' }}>Customer</th>
-            <th style={{ minWidth: '140px' }}>Project ID</th>
+            <th style={stickyHeaderCustomerStyle}>Customer</th>
+            <th style={stickyHeaderIdStyle}>Project ID</th>
             <th style={{ minWidth: '130px', textAlign: 'right' }}>OP Contribution</th>
             <th style={{ minWidth: '140px', textAlign: 'right' }}>One Time Savings</th>
             <th style={{ minWidth: '85px', textAlign: 'right' }}>Apr</th>
@@ -399,12 +451,15 @@ export const Projects: React.FC = () => {
                   cursor: isRecon ? 'default' : 'pointer'
                 }}
               >
-                <td style={isRecon ? { ...stickyCellTitleStyle(isEven), backgroundColor: '#FFFBEB', color: '#B45309' } : stickyCellTitleStyle(isEven)}>
+                <td style={stickyCellTitleStyle(isEven, isRecon)}>
                   {p.project_title}
                 </td>
-                <td>{p.approval_date ? getFiscalMonthLabel(p.approval_date) : 'N/A'}</td>
-                <td>{p.customer || 'N/A'}</td>
-                <td style={{ fontWeight: 700 }}>{p.project_id}</td>
+                <td style={stickyCellCustomerStyle(isEven, isRecon)}>
+                  {p.customer || 'N/A'}
+                </td>
+                <td style={stickyCellIdStyle(isEven, isRecon)}>
+                  {p.project_id}
+                </td>
                 <td style={{ textAlign: 'right' }}>{formatCurrency(p.op_contribution * (12 - getFiscalMonthIndex(p.approval_date || p.created_date)))}</td>
                 <td style={{ textAlign: 'right' }}>{formatCurrency(p.one_time_savings)}</td>
                 
@@ -448,10 +503,9 @@ export const Projects: React.FC = () => {
           
           {/* Totals Row */}
           <tr style={{ backgroundColor: '#F3F4F6', fontWeight: 800 }}>
-            <td style={{ ...stickyCellTitleStyle(false), backgroundColor: '#F3F4F6', fontWeight: 800 }}>TOTALS</td>
-            <td></td>
-            <td></td>
-            <td></td>
+            <td style={stickyTotalsTitleStyle}>TOTALS</td>
+            <td style={stickyTotalsCustomerStyle}></td>
+            <td style={stickyTotalsIdStyle}></td>
             <td style={{ textAlign: 'right' }}>{formatCurrency(totalOp)}</td>
             <td style={{ textAlign: 'right' }}>{formatCurrency(totalOt)}</td>
             
@@ -561,10 +615,10 @@ export const Projects: React.FC = () => {
             onClick={() => setIsExpanded(true)} 
             className="btn-export"
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            title="Expand Table"
+            title="Expand Projects"
           >
             <Maximize2 size={16} />
-            <span>Expand Table</span>
+            <span>Expand Projects</span>
           </button>
           
           <button onClick={handleExportExcel} className="btn-export">
@@ -598,7 +652,7 @@ export const Projects: React.FC = () => {
           ))}
         </div>
       ) : projectsListWithRecon.length > 0 ? (
-        <div className="table-container" style={{ overflowX: 'auto', maxHeight: '600px', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
+        <div className="table-container" style={{ overflow: 'auto', maxHeight: '600px', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
           {renderWaterfallTable()}
         </div>
       ) : (

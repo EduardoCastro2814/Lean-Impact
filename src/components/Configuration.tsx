@@ -584,7 +584,7 @@ export const Configuration: React.FC = () => {
     try {
       let summary;
       if (type === 'approved') {
-        summary = await dbService.importApprovedProjects(projects as any);
+        summary = await dbService.importApprovedProjects(projects as any, importFiscalYear);
         setApprovedImportSummary({
           fileName: file.name,
           totalRows: projects.length,
@@ -592,7 +592,7 @@ export const Configuration: React.FC = () => {
           updated: summary.updated
         });
       } else {
-        summary = await dbService.importOpenProjects(projects as any);
+        summary = await dbService.importOpenProjects(projects as any, importFiscalYear);
         setOpenImportSummary({
           fileName: file.name,
           totalRows: projects.length,
@@ -1006,22 +1006,28 @@ export const Configuration: React.FC = () => {
                 </div>
               )}
 
+              {/* Warning message */}
+              <div style={{ padding: '16px', backgroundColor: '#FEF3C7', borderLeft: '4px solid #D97706', borderRadius: '6px', fontSize: '0.875rem', color: '#92400E', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontWeight: 700 }}>⚠️ Warning:</span>
+                <span>Importing a new Kaizen file will replace all existing project data for {importFiscalYear}.</span>
+              </div>
+
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                 <button 
                   onClick={handleConfirmImport} 
                   disabled={importLoading !== null}
                   className="btn-submit"
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', backgroundColor: '#DC2626', borderColor: '#DC2626' }}
                 >
                   <CheckCircle size={16} />
-                  <span>Confirm and Import to Database</span>
+                  <span>Replace and Import</span>
                 </button>
                 <button 
                   onClick={handleCancelImport}
                   disabled={importLoading !== null}
                   className="btn-signout"
-                  style={{ width: '150px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', borderColor: '#DC2626', color: '#DC2626', backgroundColor: '#FFFFFF' }}
+                  style={{ width: '150px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', borderColor: '#4B5563', color: '#4B5563', backgroundColor: '#FFFFFF' }}
                 >
                   <span>Cancel</span>
                 </button>
