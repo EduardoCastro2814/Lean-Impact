@@ -30,9 +30,9 @@ const formatCurrency = (val: number) => {
 interface FacilitatorRow {
   facilitator: string;
   approvedProjectsCount: number;
-  opSavings: number;
-  softSavings: number;
-  totalSavings: number;
+  opContribution: number;
+  oneTimeSavings: number;
+  qualifiedSavings: number;
 }
 
 export const Facilitators: React.FC = () => {
@@ -83,29 +83,29 @@ export const Facilitators: React.FC = () => {
     approvedFiltered.forEach(p => {
       const name = p.facilitator || 'Unassigned';
       const mProj = getFiscalMonthIndex(p.approval_date || p.created_at);
-      const opSavings = p.op_contribution * (12 - mProj);
-      const softSavings = p.soft_savings || 0;
-      const totalSavings = opSavings + softSavings;
+      const opContributionVal = p.op_contribution * (12 - mProj);
+      const oneTimeSavingsVal = p.one_time_savings || 0;
+      const qualifiedSavingsVal = opContributionVal + oneTimeSavingsVal;
       
       if (!facilitatorsMap[name]) {
         facilitatorsMap[name] = {
           approvedProjectsCount: 0,
-          opSavings: 0,
-          softSavings: 0,
-          totalSavings: 0
+          opContribution: 0,
+          oneTimeSavings: 0,
+          qualifiedSavings: 0
         };
       }
       facilitatorsMap[name].approvedProjectsCount += 1;
-      facilitatorsMap[name].opSavings += opSavings;
-      facilitatorsMap[name].softSavings += softSavings;
-      facilitatorsMap[name].totalSavings += totalSavings;
+      facilitatorsMap[name].opContribution += opContributionVal;
+      facilitatorsMap[name].oneTimeSavings += oneTimeSavingsVal;
+      facilitatorsMap[name].qualifiedSavings += qualifiedSavingsVal;
     });
 
-    // Convert map to array and sort by totalSavings desc
+    // Convert map to array and sort by qualifiedSavings desc
     return Object.keys(facilitatorsMap).map(name => ({
       facilitator: name,
       ...facilitatorsMap[name]
-    })).sort((a, b) => b.totalSavings - a.totalSavings);
+    })).sort((a, b) => b.qualifiedSavings - a.qualifiedSavings);
   };
 
   const rankings = getFacilitatorRankings();
@@ -117,9 +117,9 @@ export const Facilitators: React.FC = () => {
       'Rank': idx + 1,
       'Facilitator': r.facilitator,
       'Approved Projects': r.approvedProjectsCount,
-      'OP Savings ($)': r.opSavings,
-      'Soft Savings ($)': r.softSavings,
-      'Total Savings ($)': r.totalSavings
+      'OP Contribution ($)': r.opContribution,
+      'One Time Savings ($)': r.oneTimeSavings,
+      'Qualified Savings ($)': r.qualifiedSavings
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -187,7 +187,7 @@ export const Facilitators: React.FC = () => {
         <div className="card-header-row">
           <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Award size={20} className="text-primary" />
-            Top 10 Facilitators - Approved Savings (OP vs. Soft)
+            Top 10 Facilitators - Approved Savings (OP vs. One-Time)
           </span>
           <button 
             onClick={() => exportChartPng('facilitator-top-chart', `Top_Facilitators_Chart_FY${fiscalYear}`)} 
@@ -207,8 +207,8 @@ export const Facilitators: React.FC = () => {
                 <YAxis stroke="#6B7280" tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                 <Tooltip formatter={(value) => formatCurrency(value as number)} />
                 <Legend />
-                <Bar dataKey="opSavings" name="OP Savings" fill="#009AAD" stackId="savings" />
-                <Bar dataKey="softSavings" name="Soft Savings" fill="#9CA3AF" stackId="savings" />
+                <Bar dataKey="opContribution" name="OP Contribution" fill="#009AAD" stackId="savings" />
+                <Bar dataKey="oneTimeSavings" name="One-Time Savings" fill="#00B7CC" stackId="savings" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -225,7 +225,7 @@ export const Facilitators: React.FC = () => {
         <div className="card-header-row" style={{ marginBottom: '16px' }}>
           <span className="card-title">Facilitator Performance Leaderboard</span>
           <div style={{ fontSize: '0.85rem', color: '#6B7280' }}>
-            Sorted by Total Savings (OP + Soft)
+            Sorted by Qualified Savings (OP + One-Time)
           </div>
         </div>
 
@@ -237,9 +237,9 @@ export const Facilitators: React.FC = () => {
                   <th style={{ width: '80px' }}>Rank</th>
                   <th>Facilitator Name</th>
                   <th style={{ textAlign: 'center' }}>Approved Projects</th>
-                  <th style={{ textAlign: 'right' }}>OP Savings</th>
-                  <th style={{ textAlign: 'right' }}>Soft Savings</th>
-                  <th style={{ textAlign: 'right' }}>Total Savings</th>
+                  <th style={{ textAlign: 'right' }}>OP Contribution</th>
+                  <th style={{ textAlign: 'right' }}>One Time Savings</th>
+                  <th style={{ textAlign: 'right' }}>Qualified Savings</th>
                 </tr>
               </thead>
               <tbody>
@@ -250,9 +250,9 @@ export const Facilitators: React.FC = () => {
                     </td>
                     <td style={{ fontWeight: 600, color: '#111827' }}>{r.facilitator}</td>
                     <td style={{ textAlign: 'center', fontWeight: 600 }}>{r.approvedProjectsCount}</td>
-                    <td style={{ textAlign: 'right', color: '#009AAD', fontWeight: 600 }}>{formatCurrency(r.opSavings)}</td>
-                    <td style={{ textAlign: 'right', color: '#6B7280', fontWeight: 600 }}>{formatCurrency(r.softSavings)}</td>
-                    <td style={{ textAlign: 'right', color: '#111827', fontWeight: 700 }}>{formatCurrency(r.totalSavings)}</td>
+                    <td style={{ textAlign: 'right', color: '#009AAD', fontWeight: 600 }}>{formatCurrency(r.opContribution)}</td>
+                    <td style={{ textAlign: 'right', color: '#00B7CC', fontWeight: 600 }}>{formatCurrency(r.oneTimeSavings)}</td>
+                    <td style={{ textAlign: 'right', color: '#111827', fontWeight: 700 }}>{formatCurrency(r.qualifiedSavings)}</td>
                   </tr>
                 ))}
               </tbody>
