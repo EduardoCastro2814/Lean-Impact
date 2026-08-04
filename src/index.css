@@ -217,6 +217,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 /* Header Styling */
@@ -263,6 +264,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 /* ==============================================================================

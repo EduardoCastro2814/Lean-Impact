@@ -55,88 +55,7 @@ export const Projects: React.FC = () => {
   // Search query
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Synchronized horizontal scrollbars
-  const topScrollRef = React.useRef<HTMLDivElement>(null);
-  const tableContainerRef = React.useRef<HTMLDivElement>(null);
-  const [scrollWidth, setScrollWidth] = useState(0);
 
-  const expandedTopScrollRef = React.useRef<HTMLDivElement>(null);
-  const expandedTableContainerRef = React.useRef<HTMLDivElement>(null);
-  const [expandedScrollWidth, setExpandedScrollWidth] = useState(0);
-
-  const syncScrollTable = (e: any) => {
-    const target = e.target;
-    if (topScrollRef.current && Math.abs(topScrollRef.current.scrollLeft - target.scrollLeft) > 1) {
-      topScrollRef.current.scrollLeft = target.scrollLeft;
-    }
-  };
-
-  const syncScrollTop = (e: any) => {
-    const target = e.target;
-    if (tableContainerRef.current && Math.abs(tableContainerRef.current.scrollLeft - target.scrollLeft) > 1) {
-      tableContainerRef.current.scrollLeft = target.scrollLeft;
-    }
-  };
-
-  const syncScrollExpandedTable = (e: any) => {
-    const target = e.target;
-    if (expandedTopScrollRef.current && Math.abs(expandedTopScrollRef.current.scrollLeft - target.scrollLeft) > 1) {
-      expandedTopScrollRef.current.scrollLeft = target.scrollLeft;
-    }
-  };
-
-  const syncScrollExpandedTop = (e: any) => {
-    const target = e.target;
-    if (expandedTableContainerRef.current && Math.abs(expandedTableContainerRef.current.scrollLeft - target.scrollLeft) > 1) {
-      expandedTableContainerRef.current.scrollLeft = target.scrollLeft;
-    }
-  };
-
-  useEffect(() => {
-    if (loading) return;
-    const updateWidth = () => {
-      if (tableContainerRef.current) {
-        setScrollWidth(tableContainerRef.current.scrollWidth);
-      }
-    };
-    const timer = setTimeout(updateWidth, 100);
-    window.addEventListener('resize', updateWidth);
-    
-    let observer: ResizeObserver | null = null;
-    if (tableContainerRef.current) {
-      observer = new ResizeObserver(updateWidth);
-      observer.observe(tableContainerRef.current);
-    }
-    
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updateWidth);
-      if (observer) observer.disconnect();
-    };
-  }, [loading, activeTab, approvedProjects, openProjects]);
-
-  useEffect(() => {
-    if (!isExpanded) return;
-    const updateWidth = () => {
-      if (expandedTableContainerRef.current) {
-        setExpandedScrollWidth(expandedTableContainerRef.current.scrollWidth);
-      }
-    };
-    const timer = setTimeout(updateWidth, 100);
-    window.addEventListener('resize', updateWidth);
-    
-    let observer: ResizeObserver | null = null;
-    if (expandedTableContainerRef.current) {
-      observer = new ResizeObserver(updateWidth);
-      observer.observe(expandedTableContainerRef.current);
-    }
-    
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updateWidth);
-      if (observer) observer.disconnect();
-    };
-  }, [isExpanded, activeTab, approvedProjects, openProjects]);
 
   const loadData = async () => {
     setLoading(true);
@@ -770,45 +689,21 @@ export const Projects: React.FC = () => {
           ))}
         </div>
       ) : projectsListWithRecon.length > 0 ? (
-        <>
-          {/* Top scrollbar */}
-          <div 
-            ref={topScrollRef}
-            onScroll={syncScrollTop}
-            className="top-scrollbar-container"
-            style={{ 
-              overflowX: 'auto', 
-              overflowY: 'hidden', 
-              width: '100%', 
-              maxWidth: '100%',
-              height: '18px', 
-              minHeight: '18px',
-              backgroundColor: '#F9FAFB',
-              border: '1px solid #E5E7EB',
-              borderBottom: 'none',
-              borderRadius: '8px 8px 0 0',
-              zIndex: 10
-            }}
-          >
-            <div style={{ width: `${scrollWidth}px`, height: '1px' }} />
-          </div>
-          
-          <div 
-            ref={tableContainerRef}
-            onScroll={syncScrollTable}
-            className="table-container" 
-            style={{ 
-              overflow: 'auto', 
-              maxHeight: 'calc(100vh - 360px)', 
-              width: '100%',
-              maxWidth: '100%',
-              border: '1px solid #E5E7EB', 
-              borderRadius: '0 0 8px 8px' 
-            }}
-          >
-            {renderWaterfallTable()}
-          </div>
-        </>
+        <div 
+          className="table-container" 
+          style={{ 
+            position: 'relative',
+            overflowX: 'auto', 
+            overflowY: 'auto', 
+            maxHeight: 'calc(100vh - 360px)', 
+            width: '100%',
+            maxWidth: '100%',
+            border: '1px solid #E5E7EB', 
+            borderRadius: '8px' 
+          }}
+        >
+          {renderWaterfallTable()}
+        </div>
       ) : (
         <div className="card" style={{ textAlign: 'center', padding: '48px', color: '#6B7280' }}>
           <Briefcase size={40} style={{ margin: '0 auto 12px', display: 'block', color: '#9CA3AF' }} />
@@ -1010,39 +905,17 @@ export const Projects: React.FC = () => {
               </div>
             </div>
 
-            {/* Synchronized top scrollbar inside modal */}
-            {projectsListWithRecon.length > 0 && (
-              <div 
-                ref={expandedTopScrollRef}
-                onScroll={syncScrollExpandedTop}
-                className="top-scrollbar-container"
-                style={{ 
-                  overflowX: 'auto', 
-                  overflowY: 'hidden', 
-                  width: '100%', 
-                  maxWidth: '100%',
-                  height: '18px', 
-                  minHeight: '18px',
-                  backgroundColor: '#F9FAFB',
-                  border: '1px solid #E5E7EB',
-                  borderBottom: 'none',
-                  borderRadius: '8px 8px 0 0',
-                  zIndex: 10
-                }}
-              >
-                <div style={{ width: `${expandedScrollWidth}px`, height: '1px' }} />
-              </div>
-            )}
-
             <div 
-              ref={expandedTableContainerRef}
-              onScroll={syncScrollExpandedTable}
               className="table-container"
               style={{ 
+                position: 'relative',
+                overflowX: 'auto', 
+                overflowY: 'auto', 
                 maxHeight: 'calc(100vh - 150px)', 
-                overflow: 'auto', 
+                width: '100%',
+                maxWidth: '100%',
                 border: '1px solid #E5E7EB', 
-                borderRadius: projectsListWithRecon.length > 0 ? '0 0 8px 8px' : '8px' 
+                borderRadius: '8px' 
               }}
             >
               {renderWaterfallTable()}
