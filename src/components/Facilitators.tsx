@@ -229,8 +229,8 @@ export const Facilitators: React.FC = () => {
                 <YAxis stroke="#6B7280" tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                 <Tooltip formatter={(value) => formatCurrency(value as number)} />
                 <Legend />
-                <Bar dataKey="approvedSavings" name="Approved Realized" fill="#22C55E" stackId="savings" />
-                <Bar dataKey="potentialSavings" name="Potential Open" fill="#86EFAC" stackId="savings" />
+                <Bar dataKey="approvedSavings" name="Approved Realized" fill="#006B78" stackId="savings" />
+                <Bar dataKey="potentialSavings" name="Potential Open" fill="#4FC3D7" stackId="savings" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -272,7 +272,7 @@ export const Facilitators: React.FC = () => {
                       {idx === 0 ? '🏆 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : idx + 1}
                     </td>
                     <td style={{ fontWeight: 600, color: '#111827' }}>{r.facilitator}</td>
-                    <td style={{ color: '#16A34A', fontWeight: 600 }}>{formatCurrency(r.approvedSavings)}</td>
+                    <td style={{ color: '#009AAD', fontWeight: 600 }}>{formatCurrency(r.approvedSavings)}</td>
                     <td style={{ color: '#2563EB', fontWeight: 600 }}>{formatCurrency(r.potentialSavings)}</td>
                     <td style={{ color: '#111827', fontWeight: 700 }}>{formatCurrency(r.totalSavingsManaged)}</td>
                     <td style={{ textAlign: 'center', fontWeight: 600 }}>{r.projectsClosed}</td>

@@ -419,10 +419,10 @@ export const Projects: React.FC = () => {
   };
   
   const fyColStyle = { 
-    backgroundColor: '#ECFDF5', 
+    backgroundColor: '#DFF7FA', 
     fontWeight: 800, 
     textAlign: 'right' as const, 
-    color: '#15803D' 
+    color: '#006B78' 
   };
 
   // Render Table Element
@@ -817,7 +817,7 @@ export const Projects: React.FC = () => {
                     <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1F2937' }}>
                       Target-Qualifying Savings (OP + One-Time):
                     </span>
-                    <span className="detail-value savings" style={{ fontSize: '1.1rem', color: '#15803D' }}>
+                    <span className="detail-value savings" style={{ fontSize: '1.1rem', color: '#006B78' }}>
                       {formatCurrency(getProjectPeriodSavings(selectedProject, 11))}
                     </span>
                   </div>

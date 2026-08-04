@@ -8,9 +8,9 @@
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   
   /* Core Colors */
-  --color-primary: #22C55E;
-  --color-primary-light: #DCFCE7;
-  --color-primary-dark: #15803D;
+  --color-primary: #009AAD;
+  --color-primary-light: #DFF7FA;
+  --color-primary-dark: #006B78;
   
   --color-bg-main: #F3F4F6;
   --color-bg-card: #FFFFFF;
@@ -21,10 +21,10 @@
   --color-text-light: #9CA3AF;
   
   --color-border: #E5E7EB;
-  --color-border-focus: #22C55E;
+  --color-border-focus: #009AAD;
   
   /* Status Colors */
-  --color-success: #22C55E;
+  --color-success: #009AAD;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
   --color-info: #3B82F6;

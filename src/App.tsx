@@ -85,9 +85,9 @@ export const App: React.FC = () => {
             <div style={{
               display: 'inline-flex',
               padding: '6px 12px',
-              backgroundColor: '#DCFCE7',
+              backgroundColor: 'var(--color-primary-light)',
               borderRadius: '9999px',
-              color: '#15803D',
+              color: 'var(--color-primary-dark)',
               fontWeight: 600,
               fontSize: '0.8rem'
             }}>
