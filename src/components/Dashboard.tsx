@@ -27,6 +27,13 @@ const formatCurrency = (val: number) => {
   }).format(val);
 };
 
+const formatShortCurrency = (val: number) => {
+  const absVal = Math.abs(val);
+  if (absVal >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+  if (absVal >= 1000) return `$${(val / 1000).toFixed(0)}k`;
+  return `$${val}`;
+};
+
 export const Dashboard: React.FC = () => {
   const [fiscalYear, setFiscalYear] = useState<string>('FY26');
   const [quarter, setQuarter] = useState<string>('All');
@@ -225,6 +232,12 @@ export const Dashboard: React.FC = () => {
       'Open Potential': qOpen
     };
   });
+
+  const quarterlySavingsDataForChart = quarterlySavingsData.map(d => ({
+    name: d.name,
+    'Target': Math.round(d.Target),
+    'Actual': Math.round(d['Approved Realized'])
+  }));
 
   // 5. Target vs Actual Savings Trend Cumulative Quarter Data
   const cumulativeQuarterTrendData = quarters.map((q) => {
@@ -446,6 +459,215 @@ export const Dashboard: React.FC = () => {
     );
   };
 
+  const renderChartCard = (type: 'trend' | 'quarter' | 'monthly' | 'fte') => {
+    if (type === 'trend') {
+      return (
+        <div 
+          className="card" 
+          id="trend-chart-tile" 
+          style={{ 
+            padding: isPresentation ? '16px 20px' : '20px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: isPresentation ? '8px' : '16px',
+            cursor: isPresentation ? 'default' : 'pointer',
+            height: '100%',
+            overflow: 'hidden',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+          }}
+          onClick={() => !isPresentation && setExpandedChart('trend')}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Target vs Actual Savings Trend</span>
+            {!isPresentation && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setExpandedChart('trend'); }} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Expand
+              </button>
+            )}
+          </div>
+          <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
+            <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
+              <LineChart data={cumulativeQuarterTrendData} margin={{ top: 10, right: 15, left: 15, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} />
+                <YAxis stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Legend />
+                <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#16A34A" strokeWidth={isPresentation ? 5 : 3} dot={{ r: isPresentation ? 6 : 4 }} activeDot={{ r: isPresentation ? 8 : 6 }} />
+                <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#4B5563" strokeWidth={isPresentation ? 4 : 2} strokeDasharray="5 5" dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'quarter') {
+      return (
+        <div 
+          className="card" 
+          id="quarter-chart-tile" 
+          style={{ 
+            padding: isPresentation ? '16px 20px' : '20px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: isPresentation ? '8px' : '16px',
+            cursor: isPresentation ? 'default' : 'pointer',
+            height: '100%',
+            overflow: 'hidden',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+          }}
+          onClick={() => !isPresentation && setExpandedChart('quarter')}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Quarter Performance</span>
+            {!isPresentation && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setExpandedChart('quarter'); }} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Expand
+              </button>
+            )}
+          </div>
+          <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
+            <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
+              {isPresentation ? (
+                <BarChart data={quarterlySavingsDataForChart} margin={{ top: 25, right: 10, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#6B7280" fontSize={14} tickLine={false} />
+                  <YAxis stroke="#6B7280" fontSize={14} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Legend />
+                  <Bar dataKey="Target" fill="#4B5563" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#4B5563', fontSize: 12, fontWeight: 700 }} />
+                  <Bar dataKey="Actual" fill="#16A34A" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#16A34A', fontSize: 12, fontWeight: 700 }} />
+                </BarChart>
+              ) : (
+                <BarChart data={quarterlySavingsData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Bar dataKey="Target" fill="#4B5563" />
+                  <Bar dataKey="Approved Realized" fill="#16A34A" />
+                  <Bar dataKey="Open Potential" fill="#2563EB" />
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'monthly') {
+      return (
+        <div 
+          className="card" 
+          id="monthly-chart-tile" 
+          style={{ 
+            padding: isPresentation ? '16px 20px' : '20px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: isPresentation ? '8px' : '16px',
+            cursor: isPresentation ? 'default' : 'pointer',
+            height: '100%',
+            overflow: 'hidden',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+          }}
+          onClick={() => !isPresentation && setExpandedChart('monthly')}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Monthly Savings Breakdown</span>
+            {!isPresentation && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setExpandedChart('monthly'); }} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Expand
+              </button>
+            )}
+          </div>
+          <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
+            <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
+              <BarChart data={realizedByTypeData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} />
+                <YAxis stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                {isPresentation && <Legend />}
+                <Bar dataKey="OP Contribution" name="OP Contribution" stackId="a" fill="#16A34A" />
+                <Bar dataKey="One Time Savings" name="One Time Savings" stackId="a" fill="#4ADE80" />
+                <Bar dataKey="Soft Savings" name="Soft Savings" stackId="a" fill="#9CA3AF" />
+                <Bar dataKey="Inventory Savings" name="Inventory Savings" stackId="a" fill="#D1D5DB" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'fte') {
+      return (
+        <div 
+          className="card" 
+          id="fte-chart-tile" 
+          style={{ 
+            padding: isPresentation ? '16px 20px' : '20px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: isPresentation ? '8px' : '16px',
+            cursor: isPresentation ? 'default' : 'pointer',
+            height: '100%',
+            overflow: 'hidden',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+          }}
+          onClick={() => !isPresentation && setExpandedChart('fte')}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Productivity Impact (FTE Savings)</span>
+            {!isPresentation && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setExpandedChart('fte'); }} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Expand
+              </button>
+            )}
+          </div>
+          <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
+            <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
+              <BarChart data={fteData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} />
+                <YAxis stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value) => `${Number(value).toFixed(1)} FTEs`} />
+                {isPresentation && <Legend />}
+                <Bar dataKey="Approved FTE" fill="#16A34A" name="Approved FTE" />
+                <Bar dataKey="Open FTE" fill="#94A3B8" name="Open FTE" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="view-container" style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '24px' }}>
@@ -530,108 +752,148 @@ export const Dashboard: React.FC = () => {
           width: '100vw',
           height: '100vh',
           backgroundColor: '#F9FAFB',
-          padding: '20px',
+          padding: '24px',
           boxSizing: 'border-box',
           overflow: 'hidden',
           zIndex: 99999,
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px'
+          gap: '24px'
         } : {
           display: 'flex',
           flexDirection: 'column',
           gap: '24px'
         }}
       >
-        {/* TOP SECTION: EXECUTIVE PROGRESS BAR */}
-        <div className="card" style={isPresentation ? { padding: '16px 20px', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '8px' } : { padding: '24px', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isPresentation ? '4px' : '16px' }}>
-            <h3 style={{ fontSize: isPresentation ? '1.1rem' : '1.25rem', fontWeight: 800, color: '#111827', margin: 0 }}>
-              Annual Target vs Current Savings Pipeline
-            </h3>
-            <span style={{ fontSize: '0.875rem', fontWeight: 700, padding: '4px 12px', backgroundColor: '#F0F9FF', color: '#0369A1', borderRadius: '9999px' }}>
-              Target FY: {getFyDisplayLabel(fiscalYear)}
-            </span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: isPresentation ? '4px' : '16px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Annual Target</span>
-              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#111827' }}>{formatCurrency(annualTarget)}</span>
+        {isPresentation ? (
+          /* TOP SECTION IN PRESENTATION MODE: Single Executive Row with 4 Large KPIs */
+          <div 
+            style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(4, 1fr)', 
+              gap: '24px', 
+              width: '100%',
+              marginBottom: '4px'
+            }}
+          >
+            {/* Target Card */}
+            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Target</span>
+              <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#4B5563', lineHeight: 1.1 }}>{formatCurrency(annualTarget)}</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Current Qualified Savings</span>
-              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Remaining Target Gap</span>
-              <span style={{ fontSize: isPresentation ? '1.15rem' : '1.25rem', fontWeight: 800, color: '#DC2626' }}>{formatCurrency(savingsGap)}</span>
-            </div>
-          </div>
 
-          <div style={{ width: '100%', height: isPresentation ? '16px' : '24px', backgroundColor: '#E5E7EB', borderRadius: '12px', overflow: 'hidden', display: 'flex', position: 'relative' }}>
-            <div 
-              style={{ 
-                width: `${realizedPercent}%`, 
-                height: '100%', 
-                backgroundColor: '#16A34A', 
-                transition: 'width 0.5s ease-in-out' 
-              }} 
-              title={`Realized Savings: ${realizedPercent.toFixed(1)}%`}
-            />
-            <div 
-              style={{ 
-                width: `${potentialPercent}%`, 
-                height: '100%', 
-                backgroundColor: '#3B82F6', 
-                transition: 'width 0.5s ease-in-out' 
-              }} 
-              title={`Potential Savings: ${potentialPercent.toFixed(1)}%`}
-            />
-            {realizedSavings + potentialSavings < annualTarget && (
-              <div 
-                style={{ 
-                  flexGrow: 1, 
-                  height: '100%', 
-                  backgroundColor: '#FEE2E2', 
-                  backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, #FCA5A5 10px, #FCA5A5 20px)',
-                  opacity: 0.8
-                }} 
-                title={`Target Deficit Gap: ${formatCurrency(savingsGap)}`}
-              />
-            )}
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.7rem', color: '#6B7280', fontWeight: 600 }}>
-            <span>0%</span>
-            <span>Target Achieved: {targetAchievementPercent.toFixed(1)}%</span>
-            <span>100% Target Milestone</span>
-          </div>
-        </div>
+            {/* Current Savings Card */}
+            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Current Savings</span>
+              <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#16A34A', lineHeight: 1.1 }}>{formatCurrency(realizedSavings)}</span>
+            </div>
 
-        {/* SUMMARY ROW: FOUR EXECUTIVE CARDS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-          <div className="card" style={{ padding: isPresentation ? '12px 16px' : '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #10B981', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closed Projects</span>
-            <span style={{ fontSize: isPresentation ? '1.6rem' : '2.2rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{approvedCount}</span>
-            <span style={{ fontSize: '0.7rem', color: '#10B981', fontWeight: 600 }}>Approved and realized impact</span>
+            {/* Target Achievement Card */}
+            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Achievement</span>
+              <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#16A34A', lineHeight: 1.1 }}>{targetAchievementPercent.toFixed(1)}%</span>
+            </div>
+
+            {/* Gap Card */}
+            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Gap</span>
+              <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#DC2626', lineHeight: 1.1 }}>{formatCurrency(savingsGap)}</span>
+            </div>
           </div>
-          <div className="card" style={{ padding: isPresentation ? '12px 16px' : '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #3B82F6', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Projects</span>
-            <span style={{ fontSize: isPresentation ? '1.6rem' : '2.2rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{openCount}</span>
-            <span style={{ fontSize: '0.7rem', color: '#3B82F6', fontWeight: 600 }}>Active open pipeline</span>
-          </div>
-          <div className="card" style={{ padding: isPresentation ? '12px 16px' : '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #0F766E', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Qualified Savings</span>
-            <span style={{ fontSize: isPresentation ? '1.6rem' : '2.2rem', fontWeight: 800, color: '#0F766E', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
-            <span style={{ fontSize: '0.7rem', color: '#0F766E', fontWeight: 600 }}>Target-Qualifying (OP + One-Time)</span>
-          </div>
-          <div className="card" style={{ padding: isPresentation ? '12px 16px' : '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #DC2626', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Remaining Target Gap</span>
-            <span style={{ fontSize: isPresentation ? '1.6rem' : '2.2rem', fontWeight: 800, color: '#DC2626', lineHeight: 1 }}>{formatCurrency(Math.max(0, annualTarget - realizedSavings))}</span>
-            <span style={{ fontSize: '0.7rem', color: '#DC2626', fontWeight: 600 }}>Remaining deficit to milestone goal</span>
-          </div>
-        </div>
+        ) : (
+          /* STANDARD MODE TOP SECTION: EXECUTIVE PROGRESS BAR & SUMMARY ROW */
+          <>
+            {/* TOP SECTION: EXECUTIVE PROGRESS BAR */}
+            <div className="card" style={{ padding: '24px', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: 0 }}>
+                  Annual Target vs Current Savings Pipeline
+                </h3>
+                <span style={{ fontSize: '0.875rem', fontWeight: 700, padding: '4px 12px', backgroundColor: '#F0F9FF', color: '#0369A1', borderRadius: '9999px' }}>
+                  Target FY: {getFyDisplayLabel(fiscalYear)}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Annual Target</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827' }}>{formatCurrency(annualTarget)}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Current Qualified Savings</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Remaining Target Gap</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#DC2626' }}>{formatCurrency(savingsGap)}</span>
+                </div>
+              </div>
+
+              <div style={{ width: '100%', height: '24px', backgroundColor: '#E5E7EB', borderRadius: '12px', overflow: 'hidden', display: 'flex', position: 'relative' }}>
+                <div 
+                  style={{ 
+                    width: `${realizedPercent}%`, 
+                    height: '100%', 
+                    backgroundColor: '#16A34A', 
+                    transition: 'width 0.5s ease-in-out' 
+                  }} 
+                  title={`Realized Savings: ${realizedPercent.toFixed(1)}%`}
+                />
+                <div 
+                  style={{ 
+                    width: `${potentialPercent}%`, 
+                    height: '100%', 
+                    backgroundColor: '#3B82F6', 
+                    transition: 'width 0.5s ease-in-out' 
+                  }} 
+                  title={`Potential Savings: ${potentialPercent.toFixed(1)}%`}
+                />
+                {realizedSavings + potentialSavings < annualTarget && (
+                  <div 
+                    style={{ 
+                      flexGrow: 1, 
+                      height: '100%', 
+                      backgroundColor: '#FEE2E2', 
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, #FCA5A5 10px, #FCA5A5 20px)',
+                      opacity: 0.8
+                    }} 
+                    title={`Target Deficit Gap: ${formatCurrency(savingsGap)}`}
+                  />
+                )}
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.7rem', color: '#6B7280', fontWeight: 600 }}>
+                <span>0%</span>
+                <span>Target Achieved: {targetAchievementPercent.toFixed(1)}%</span>
+                <span>100% Target Milestone</span>
+              </div>
+            </div>
+
+            {/* SUMMARY ROW: FOUR EXECUTIVE CARDS */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #10B981', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closed Projects</span>
+                <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{approvedCount}</span>
+                <span style={{ fontSize: '0.7rem', color: '#10B981', fontWeight: 600 }}>Approved and realized impact</span>
+              </div>
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #3B82F6', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Projects</span>
+                <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{openCount}</span>
+                <span style={{ fontSize: '0.7rem', color: '#3B82F6', fontWeight: 600 }}>Active open pipeline</span>
+              </div>
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #0F766E', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Qualified Savings</span>
+                <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0F766E', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
+                <span style={{ fontSize: '0.7rem', color: '#0F766E', fontWeight: 600 }}>Target-Qualifying (OP + One-Time)</span>
+              </div>
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #DC2626', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Remaining Target Gap</span>
+                <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#DC2626', lineHeight: 1 }}>{formatCurrency(Math.max(0, annualTarget - realizedSavings))}</span>
+                <span style={{ fontSize: '0.7rem', color: '#DC2626', fontWeight: 600 }}>Remaining deficit to milestone goal</span>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* MAIN ANALYTICS GRID: 2x2 CHART TILES */}
         <div 
@@ -640,169 +902,31 @@ export const Dashboard: React.FC = () => {
             flex: 1,
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
-            gridTemplateRows: 'repeat(2, 1fr)',
-            gap: '16px',
-            overflow: 'hidden'
+            gridTemplateRows: '1.35fr 0.65fr',
+            gap: '24px',
+            overflow: 'hidden',
+            minHeight: 0
           } : {
             display: 'grid',
             gap: '24px',
             marginTop: '20px'
           }}
         >
-          
-          {/* Card 1: Target vs Actual Savings Trend Chart */}
-          <div 
-            className="card" 
-            id="trend-chart-tile" 
-            style={{ 
-              padding: isPresentation ? '12px 16px' : '20px', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: isPresentation ? '8px' : '16px',
-              cursor: 'pointer',
-              height: '100%',
-              overflow: 'hidden'
-            }}
-            onClick={() => setExpandedChart('trend')}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Target vs Actual Savings Trend</span>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setExpandedChart('trend'); }} 
-                className="btn-export"
-                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-              >
-                Expand
-              </button>
-            </div>
-            <div style={{ flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
-              <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-                <LineChart data={cumulativeQuarterTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Line type="monotone" dataKey="Actual Savings" stroke="#16A34A" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="Target Savings" stroke="#4B5563" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Card 2: Monthly Savings Breakdown */}
-          <div 
-            className="card" 
-            id="monthly-chart-tile" 
-            style={{ 
-              padding: isPresentation ? '12px 16px' : '20px', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: isPresentation ? '8px' : '16px',
-              height: '100%',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Monthly Savings Breakdown</span>
-              <button 
-                onClick={() => setExpandedChart('monthly')} 
-                className="btn-export"
-                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-              >
-                Expand
-              </button>
-            </div>
-            <div style={{ flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
-              <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-                <BarChart data={realizedByTypeData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Bar dataKey="OP Contribution" stackId="a" fill="#16A34A" />
-                  <Bar dataKey="One Time Savings" stackId="a" fill="#3B82F6" />
-                  <Bar dataKey="Soft Savings" stackId="a" fill="#9CA3AF" />
-                  <Bar dataKey="Inventory Savings" stackId="a" fill="#FBBF24" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Card 3: Quarter Performance */}
-          <div 
-            className="card" 
-            id="quarter-chart-tile" 
-            style={{ 
-              padding: isPresentation ? '12px 16px' : '20px', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: isPresentation ? '8px' : '16px',
-              height: '100%',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Quarter Performance</span>
-              <button 
-                onClick={() => setExpandedChart('quarter')} 
-                className="btn-export"
-                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-              >
-                Expand
-              </button>
-            </div>
-            <div style={{ flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
-              <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-                <BarChart data={quarterlySavingsData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Bar dataKey="Target" fill="#4B5563" />
-                  <Bar dataKey="Approved Realized" fill="#16A34A" />
-                  <Bar dataKey="Open Potential" fill="#2563EB" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Card 4: FTE Performance */}
-          <div 
-            className="card" 
-            id="fte-chart-tile" 
-            style={{ 
-              padding: isPresentation ? '12px 16px' : '20px', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: isPresentation ? '8px' : '16px',
-              height: '100%',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Productivity Impact (FTE Savings)</span>
-              <button 
-                onClick={() => setExpandedChart('fte')} 
-                className="btn-export"
-                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-              >
-                Expand
-              </button>
-            </div>
-            <div style={{ flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
-              <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-                <BarChart data={fteData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(value) => `${Number(value).toFixed(1)} FTEs`} />
-                  <Bar dataKey="Approved FTE" fill="#0284C7" />
-                  <Bar dataKey="Open FTE" fill="#38BDF8" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
+          {isPresentation ? (
+            <>
+              {renderChartCard('trend')}
+              {renderChartCard('quarter')}
+              {renderChartCard('monthly')}
+              {renderChartCard('fte')}
+            </>
+          ) : (
+            <>
+              {renderChartCard('trend')}
+              {renderChartCard('monthly')}
+              {renderChartCard('quarter')}
+              {renderChartCard('fte')}
+            </>
+          )}
         </div>
 
       </div>

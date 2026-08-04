@@ -1046,11 +1046,15 @@ body {
   }
 }
 #dashboard-presentation-container:fullscreen {
-  padding: 32px;
+  padding: 24px;
   background-color: #F9FAFB;
-  overflow-y: auto;
+  overflow: hidden;
   width: 100vw;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
 }
 
 /* Premium horizontal/vertical scrollbars for Projects table layout */
