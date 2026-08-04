@@ -22,7 +22,6 @@ import {
 import html2canvas from 'html2canvas';
 import { dbService, getFyDisplayLabel, getFiscalMonthIndex, getProjectPeriodSavings } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen, SavingsTarget } from '../lib/supabaseClient';
-import flexLogo from '../assets/flex_logo.png';
 
 const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -76,43 +75,6 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isPresentation, setIsPresentation] = useState(false);
 
-  const CustomLabel = (props: any) => {
-    const { x, y, index } = props;
-    if (index === undefined || index === null) return null;
-    const row = cumulativeQuarterTrendData[index];
-    if (!row) return null;
-    
-    const targetVal = row['Target Savings'];
-    const actualVal = row['Actual Savings'];
-    const gapVal = actualVal - targetVal;
-    
-    const formatShortK = (v: number) => {
-      const absV = Math.abs(v);
-      if (absV >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
-      if (absV >= 1000) return `${(v / 1000).toFixed(1)}K`;
-      return `${v}`;
-    };
-    
-    const targetStr = formatShortK(targetVal);
-    const actualStr = formatShortK(actualVal);
-    const gapStr = (gapVal >= 0 ? '+' : '') + formatShortK(gapVal);
-    
-    return (
-      <g transform={`translate(${x}, ${y - 30})`}>
-        <rect x="-42" y="-38" width="84" height="48" fill="#FFFFFF" stroke="#E5E7EB" strokeWidth="1" rx="4" filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.06))" />
-        <text x="0" y="-26" textAnchor="middle" fontSize="9" fontWeight="700" fill="#374151">
-          T: {targetStr}
-        </text>
-        <text x="0" y="-14" textAnchor="middle" fontSize="9" fontWeight="700" fill="#009AAD">
-          A: {actualStr}
-        </text>
-        <text x="0" y="-2" textAnchor="middle" fontSize="10" fontWeight="800" fill={gapVal >= 0 ? '#16A34A' : '#E53935'}>
-          G: {gapStr}
-        </text>
-      </g>
-    );
-  };
-  
   const renderPieLabel = (props: any) => {
     const { cx, cy, midAngle, outerRadius, name, percent } = props;
     const RADIAN = Math.PI / 180;
@@ -492,24 +454,26 @@ export const Dashboard: React.FC = () => {
     if (expandedChart === 'trend') {
       chartTitle = 'Target vs Actual Savings Trend (Cumulative)';
       chartComponent = (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div id="chart-export-target-trend" style={{ padding: '16px 24px', backgroundColor: '#FFFFFF' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginBottom: '16px', textAlign: 'center' }}>
-              Target vs Actual Savings Trend (Cumulative)
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+          <div id="expanded-chart-export-trend" style={{ padding: '24px', backgroundColor: '#FFFFFF', borderRadius: '12px', display: 'flex', flexDirection: 'column', width: '100%' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: '0 0 20px 0', textAlign: 'left' }}>
+              {chartTitle}
             </h3>
-            <ResponsiveContainer width="100%" height={380}>
-              <ComposedChart data={cumulativeQuarterTrendData} margin={{ top: 30, right: 25, left: 15, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
-                <YAxis stroke="#6B7280" fontSize={11} tickLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.20} activeDot={false} legendType="none" />
-                <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.20} activeDot={false} legendType="none" />
-                <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={4} label={<CustomLabel />} dot={{ r: 6 }} activeDot={{ r: 8 }} />
-                <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={4} strokeDasharray="5 5" dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: '400px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={cumulativeQuarterTrendData} margin={{ top: 25, right: 25, left: 15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.08} activeDot={false} legendType="none" />
+                  <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.08} activeDot={false} legendType="none" />
+                  <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={5} label={<CustomActualLabel />} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={3} strokeDasharray="5 5" dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
           </div>
           
           <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
@@ -542,75 +506,115 @@ export const Dashboard: React.FC = () => {
         </div>
       );
     } else if (expandedChart === 'monthly') {
-      chartTitle = 'Monthly Savings Breakdown (Stacked Month Trend)';
+      chartTitle = 'Monthly Savings Breakdown';
       chartComponent = (
-        <ResponsiveContainer width="100%" height={500}>
-          <BarChart data={realizedByTypeData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis tickFormatter={formatCurrency} />
-            <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-            <Legend />
-            <Bar dataKey="OP Contribution" stackId="a" fill="#009AAD" />
-            <Bar dataKey="One Time Savings" stackId="a" fill="#00B7CC" />
-            <Bar dataKey="Soft Savings" stackId="a" fill="#9CA3AF" />
-            <Bar dataKey="Inventory Savings" stackId="a" fill="#D1D5DB" />
-          </BarChart>
-        </ResponsiveContainer>
+        <div id="expanded-chart-export-monthly" style={{ padding: '24px', backgroundColor: '#FFFFFF', borderRadius: '12px', display: 'flex', flexDirection: 'column', width: '100%' }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: '0 0 20px 0', textAlign: 'left' }}>
+            {chartTitle}
+          </h3>
+          <div style={{ width: '100%', height: '500px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={realizedByTypeData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis tickFormatter={formatCurrency} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Legend />
+                <Bar dataKey="OP Contribution" name="OP Contribution" stackId="a" fill="#009AAD" />
+                <Bar dataKey="One Time Savings" name="One Time Savings" stackId="a" fill="#4FC3D7" label={renderStackedBarLabel} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       );
     } else if (expandedChart === 'quarter') {
-      chartTitle = 'Quarter Performance (Target vs Realized vs Potential)';
+      chartTitle = 'Quarter Performance';
       chartComponent = (
-        <ResponsiveContainer width="100%" height={500}>
-          <BarChart data={quarterlySavingsData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis tickFormatter={formatCurrency} />
-            <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-            <Legend />
-            <Bar dataKey="Target" fill="#374151" />
-            <Bar dataKey="Approved Realized" fill="#009AAD" />
-            <Bar dataKey="Open Potential" fill="#4FC3D7" />
-          </BarChart>
-        </ResponsiveContainer>
+        <div id="expanded-chart-export-quarter" style={{ padding: '24px', backgroundColor: '#FFFFFF', borderRadius: '12px', display: 'flex', flexDirection: 'column', width: '100%' }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: '0 0 20px 0', textAlign: 'left' }}>
+            {chartTitle}
+          </h3>
+          <div style={{ width: '100%', height: '500px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={quarterlySavingsDataForChart} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis tickFormatter={formatCurrency} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Legend />
+                <Bar dataKey="Target" name="Target Savings" fill="#374151" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontWeight: 700 }} />
+                <Bar dataKey="Actual" name="Actual Savings" fill="#009AAD" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontWeight: 700 }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       );
     } else if (expandedChart === 'projectStatus') {
       chartTitle = 'Project Status Overview';
       const totalProjects = approvedCount + openCount;
+      const closedPct = totalProjects > 0 ? Math.round((approvedCount / totalProjects) * 100) : 0;
+      const openPct = totalProjects > 0 ? Math.round((openCount / totalProjects) * 100) : 0;
       chartComponent = (
-        <ResponsiveContainer width="100%" height={500}>
-          <PieChart margin={{ top: 40, right: 50, bottom: 40, left: 50 }}>
-            <Pie
-              data={donutData}
-              cx="50%"
-              cy="50%"
-              innerRadius={110}
-              outerRadius={160}
-              paddingAngle={3}
-              dataKey="value"
-              label={renderPieLabel}
-            >
-              {donutData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <text
-              x="50%"
-              y="50%"
-              textAnchor="middle"
-              dominantBaseline="middle"
-            >
-              <tspan x="50%" dy="-12" fontSize="3.5rem" fontWeight="800" fill="#111827">
-                {totalProjects}
-              </tspan>
-              <tspan x="50%" dy="40" fontSize="1.25rem" fontWeight="600" fill="#6B7280">
-                Total Projects
-              </tspan>
-            </text>
-            <Tooltip content={<CustomDonutTooltip />} />
-            <Legend verticalAlign="bottom" height={36} iconType="circle" />
-          </PieChart>
-        </ResponsiveContainer>
+        <div id="expanded-chart-export-projectStatus" style={{ padding: '24px', backgroundColor: '#FFFFFF', borderRadius: '12px', display: 'flex', flexDirection: 'column', width: '100%' }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: '0 0 20px 0', textAlign: 'left' }}>
+            {chartTitle}
+          </h3>
+          <div style={{ width: '100%', height: '420px', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+                  <Pie
+                    data={donutData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={110}
+                    outerRadius={160}
+                    paddingAngle={3}
+                    dataKey="value"
+                    label={renderPieLabel}
+                  >
+                    {donutData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <text
+                    x="50%"
+                    y="50%"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    <tspan x="50%" dy="-6" fontSize="3rem" fontWeight="800" fill="#111827">
+                      {totalProjects}
+                    </tspan>
+                    <tspan x="50%" dy="30" fontSize="1.1rem" fontWeight="600" fill="#6B7280">
+                      Total Projects
+                    </tspan>
+                  </text>
+                  <Tooltip content={<CustomDonutTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* HTML Legend at the bottom */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: '32px', 
+              marginTop: '16px',
+              fontSize: '1.1rem', 
+              fontWeight: 700 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#009AAD' }} />
+                <span style={{ color: '#111827' }}>Closed Projects: {approvedCount} ({closedPct}%)</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#4FC3D7' }} />
+                <span style={{ color: '#111827' }}>Open Projects: {openCount} ({openPct}%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
       );
     }
 
@@ -642,26 +646,23 @@ export const Dashboard: React.FC = () => {
           flexDirection: 'column',
           gap: '16px'
         }} onClick={(e) => e.stopPropagation()}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: 0 }}>{chartTitle}</h3>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => exportChart(expandedChart === 'trend' ? 'chart-export-target-trend' : `expanded-chart-render-${expandedChart}`, `Lean_Savings_Dashboard_${expandedChart}_Chart`)}
-                className="btn-export btn-export-primary"
-                style={{ padding: '6px 12px' }}
-              >
-                Export PNG
-              </button>
-              <button 
-                onClick={() => setExpandedChart(null)} 
-                className="btn-export"
-                style={{ padding: '6px 12px', minWidth: '80px' }}
-              >
-                Close
-              </button>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <button 
+              onClick={() => exportChart(`expanded-chart-export-${expandedChart}`, `Lean_Savings_Dashboard_${expandedChart}_Chart`)}
+              className="btn-export btn-export-primary"
+              style={{ padding: '6px 12px' }}
+            >
+              Export PNG
+            </button>
+            <button 
+              onClick={() => setExpandedChart(null)} 
+              className="btn-export"
+              style={{ padding: '6px 12px', minWidth: '80px' }}
+            >
+              Close
+            </button>
           </div>
-          <div id={`expanded-chart-render-${expandedChart}`} style={{ padding: '16px', backgroundColor: '#FFFFFF', borderRadius: '8px' }}>
+          <div>
             {chartComponent}
           </div>
           <div style={{ textAlign: 'center', fontSize: '0.85rem', color: '#6B7280' }}>
@@ -685,6 +686,7 @@ export const Dashboard: React.FC = () => {
             gap: isPresentation ? '8px' : '16px',
             cursor: isPresentation ? 'default' : 'pointer',
             height: '100%',
+            position: 'relative',
             overflow: 'hidden',
             backgroundColor: '#FFFFFF',
             border: '1px solid var(--color-border)',
@@ -692,33 +694,50 @@ export const Dashboard: React.FC = () => {
           }}
           onClick={() => !isPresentation && setExpandedChart('trend')}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Target vs Actual Savings Trend</span>
-            {!isPresentation && (
+          {/* Isolated container for high resolution PNG exports (excludes control buttons) */}
+          <div id="export-container-trend" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: '#FFFFFF' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>
+                Target vs Actual Savings Trend (Cumulative)
+              </span>
+            </div>
+            
+            <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '310px', minHeight: '310px' }}>
+              <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
+                <ComposedChart data={cumulativeQuarterTrendData} margin={{ top: 25, right: 25, left: 15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} />
+                  <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.08} activeDot={false} legendType="none" />
+                  <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.08} activeDot={false} legendType="none" />
+                  <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={5} label={<CustomActualLabel />} dot={{ r: isPresentation ? 6 : 4 }} activeDot={{ r: isPresentation ? 8 : 6 }} />
+                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={3} strokeDasharray="5 5" dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Action buttons rendered absolute outside the export wrapper */}
+          {!isPresentation && (
+            <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
               <button 
-                onClick={(e) => { e.stopPropagation(); setExpandedChart('trend'); }} 
+                onClick={() => exportChart('export-container-trend', 'Lean_Savings_Dashboard_Trend_Chart')} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Export PNG
+              </button>
+              <button 
+                onClick={() => setExpandedChart('trend')} 
                 className="btn-export"
                 style={{ padding: '4px 8px', fontSize: '0.75rem' }}
               >
                 Expand
               </button>
-            )}
-          </div>
-          <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
-            <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-              <ComposedChart data={cumulativeQuarterTrendData} margin={{ top: 30, right: 25, left: 15, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} />
-                <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.20} activeDot={false} legendType="none" />
-                <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.20} activeDot={false} legendType="none" />
-                <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={4} label={<CustomLabel />} dot={{ r: isPresentation ? 6 : 4 }} activeDot={{ r: isPresentation ? 8 : 6 }} />
-                <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={4} strokeDasharray="5 5" dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -735,6 +754,7 @@ export const Dashboard: React.FC = () => {
             gap: isPresentation ? '8px' : '16px',
             cursor: isPresentation ? 'default' : 'pointer',
             height: '100%',
+            position: 'relative',
             overflow: 'hidden',
             backgroundColor: '#FFFFFF',
             border: '1px solid var(--color-border)',
@@ -742,43 +762,48 @@ export const Dashboard: React.FC = () => {
           }}
           onClick={() => !isPresentation && setExpandedChart('quarter')}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Quarter Performance</span>
-            {!isPresentation && (
+          {/* Isolated container for high resolution PNG exports (excludes control buttons) */}
+          <div id="export-container-quarter" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: '#FFFFFF' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>
+                Quarter Performance
+              </span>
+            </div>
+            
+            <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '310px', minHeight: '310px' }}>
+              <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
+                <BarChart data={quarterlySavingsDataForChart} margin={{ top: 25, right: 10, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} />
+                  <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Legend />
+                  <Bar dataKey="Target" name="Target Savings" fill="#374151" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }} />
+                  <Bar dataKey="Actual" name="Actual Savings" fill="#009AAD" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Action buttons rendered absolute outside the export wrapper */}
+          {!isPresentation && (
+            <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
               <button 
-                onClick={(e) => { e.stopPropagation(); setExpandedChart('quarter'); }} 
+                onClick={() => exportChart('export-container-quarter', 'Lean_Savings_Dashboard_Quarter_Chart')} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Export PNG
+              </button>
+              <button 
+                onClick={() => setExpandedChart('quarter')} 
                 className="btn-export"
                 style={{ padding: '4px 8px', fontSize: '0.75rem' }}
               >
                 Expand
               </button>
-            )}
-          </div>
-          <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
-            <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-              {isPresentation ? (
-                <BarChart data={quarterlySavingsDataForChart} margin={{ top: 25, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" stroke="#111827" fontSize={16} fontWeight={700} tickLine={false} />
-                  <YAxis stroke="#111827" fontSize={16} fontWeight={700} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Legend />
-                  <Bar dataKey="Target" fill="#374151" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontSize: 12, fontWeight: 700 }} />
-                  <Bar dataKey="Actual" fill="#009AAD" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontSize: 12, fontWeight: 700 }} />
-                </BarChart>
-              ) : (
-                <BarChart data={quarterlySavingsData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Bar dataKey="Target" fill="#374151" />
-                  <Bar dataKey="Approved Realized" fill="#009AAD" />
-                  <Bar dataKey="Open Potential" fill="#4FC3D7" />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -795,6 +820,7 @@ export const Dashboard: React.FC = () => {
             gap: isPresentation ? '8px' : '16px',
             cursor: isPresentation ? 'default' : 'pointer',
             height: '100%',
+            position: 'relative',
             overflow: 'hidden',
             backgroundColor: '#FFFFFF',
             border: '1px solid var(--color-border)',
@@ -802,39 +828,56 @@ export const Dashboard: React.FC = () => {
           }}
           onClick={() => !isPresentation && setExpandedChart('monthly')}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Monthly Savings Breakdown</span>
-            {!isPresentation && (
+          {/* Isolated container for high resolution PNG exports (excludes control buttons) */}
+          <div id="export-container-monthly" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: '#FFFFFF' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>
+                Monthly Savings Breakdown
+              </span>
+            </div>
+            
+            <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '310px', minHeight: '310px' }}>
+              <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
+                <BarChart data={realizedByTypeData} margin={{ top: 15, right: 10, left: 10, bottom: 5 }} barSize={isPresentation ? 45 : 28}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} />
+                  <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Legend />
+                  <Bar dataKey="OP Contribution" name="OP Contribution" stackId="a" fill="#009AAD" />
+                  <Bar dataKey="One Time Savings" name="One Time Savings" stackId="a" fill="#4FC3D7" label={renderStackedBarLabel} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Action buttons rendered absolute outside the export wrapper */}
+          {!isPresentation && (
+            <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
               <button 
-                onClick={(e) => { e.stopPropagation(); setExpandedChart('monthly'); }} 
+                onClick={() => exportChart('export-container-monthly', 'Lean_Savings_Dashboard_Monthly_Chart')} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Export PNG
+              </button>
+              <button 
+                onClick={() => setExpandedChart('monthly')} 
                 className="btn-export"
                 style={{ padding: '4px 8px', fontSize: '0.75rem' }}
               >
                 Expand
               </button>
-            )}
-          </div>
-          <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
-            <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-              <BarChart data={realizedByTypeData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} />
-                <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                {isPresentation && <Legend />}
-                <Bar dataKey="OP Contribution" name="OP Contribution" stackId="a" fill="#009AAD" />
-                <Bar dataKey="One Time Savings" name="One Time Savings" stackId="a" fill="#00B7CC" />
-                <Bar dataKey="Soft Savings" name="Soft Savings" stackId="a" fill="#9CA3AF" />
-                <Bar dataKey="Inventory Savings" name="Inventory Savings" stackId="a" fill="#D1D5DB" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+            </div>
+          )}
         </div>
       );
     }
 
     if (type === 'projectStatus') {
       const totalProjects = approvedCount + openCount;
+      const closedPct = totalProjects > 0 ? Math.round((approvedCount / totalProjects) * 100) : 0;
+      const openPct = totalProjects > 0 ? Math.round((openCount / totalProjects) * 100) : 0;
       return (
         <div 
           className="card" 
@@ -846,6 +889,7 @@ export const Dashboard: React.FC = () => {
             gap: isPresentation ? '8px' : '16px',
             cursor: isPresentation ? 'default' : 'pointer',
             height: '100%',
+            position: 'relative',
             overflow: 'hidden',
             backgroundColor: '#FFFFFF',
             border: '1px solid var(--color-border)',
@@ -853,72 +897,91 @@ export const Dashboard: React.FC = () => {
           }}
           onClick={() => !isPresentation && setExpandedChart('projectStatus')}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Project Status Overview</span>
-            {!isPresentation && (
+          {/* Isolated container for high resolution PNG exports (excludes control buttons) */}
+          <div id="export-container-projectStatus" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: '#FFFFFF' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>
+                Project Status Overview
+              </span>
+            </div>
+            
+            <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' } : { flex: 1, width: '100%', height: '310px', minHeight: '310px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
+                  <PieChart margin={isPresentation ? { top: 10, right: 10, bottom: 10, left: 10 } : { top: 5, right: 10, bottom: 5, left: 10 }}>
+                    <Pie
+                      data={donutData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={isPresentation ? 110 : 70}
+                      outerRadius={isPresentation ? 160 : 105}
+                      paddingAngle={3}
+                      dataKey="value"
+                      label={isPresentation ? false : renderPieLabel}
+                    >
+                      {donutData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <text
+                      x="50%"
+                      y="50%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                    >
+                      <tspan x="50%" dy={isPresentation ? "-10" : "-6"} fontSize={isPresentation ? "3.6rem" : "2.2rem"} fontWeight="800" fill="#111827">
+                        {totalProjects}
+                      </tspan>
+                      <tspan x="50%" dy={isPresentation ? "34" : "24"} fontSize={isPresentation ? "1.25rem" : "0.85rem"} fontWeight="600" fill="#6B7280">
+                        Total Projects
+                      </tspan>
+                    </text>
+                    <Tooltip content={<CustomDonutTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Status details displayed below the Donut chart (preventing overlap inside the donut) */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                gap: isPresentation ? '32px' : '16px', 
+                marginTop: isPresentation ? '12px' : '6px',
+                paddingBottom: '4px',
+                fontSize: isPresentation ? '1.25rem' : '0.85rem', 
+                fontWeight: 700 
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#009AAD' }} />
+                  <span style={{ color: '#111827' }}>Closed Projects: {approvedCount} ({closedPct}%)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#4FC3D7' }} />
+                  <span style={{ color: '#111827' }}>Open Projects: {openCount} ({openPct}%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons rendered absolute outside the export wrapper */}
+          {!isPresentation && (
+            <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
               <button 
-                onClick={(e) => { e.stopPropagation(); setExpandedChart('projectStatus'); }} 
+                onClick={() => exportChart('export-container-projectStatus', 'Lean_Savings_Dashboard_Project_Status_Chart')} 
+                className="btn-export"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+              >
+                Export PNG
+              </button>
+              <button 
+                onClick={() => setExpandedChart('projectStatus')} 
                 className="btn-export"
                 style={{ padding: '4px 8px', fontSize: '0.75rem' }}
               >
                 Expand
               </button>
-            )}
-          </div>
-          <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
-            <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-              <PieChart margin={isPresentation ? { top: 0, right: 0, bottom: 0, left: 0 } : { top: 10, right: 20, bottom: 10, left: 20 }}>
-                <Pie
-                  data={donutData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={isPresentation ? 95 : 55}
-                  outerRadius={isPresentation ? 140 : 85}
-                  paddingAngle={3}
-                  dataKey="value"
-                  label={isPresentation ? false : renderPieLabel}
-                >
-                  {donutData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <text
-                  x="50%"
-                  y="50%"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                >
-                  {isPresentation ? (
-                    <>
-                      <tspan x="50%" dy="-35" fontSize="3.8rem" fontWeight="800" fill="#111827">
-                        {totalProjects}
-                      </tspan>
-                      <tspan x="50%" dy="32" fontSize="1.25rem" fontWeight="700" fill="#6B7280" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Total Projects
-                      </tspan>
-                      <tspan x="50%" dy="26" fontSize="1.35rem" fontWeight="700" fill="#009AAD">
-                        Closed: {approvedCount} ({totalProjects > 0 ? Math.round((approvedCount / totalProjects) * 100) : 0}%)
-                      </tspan>
-                      <tspan x="50%" dy="22" fontSize="1.35rem" fontWeight="700" fill="#4FC3D7">
-                        Open: {openCount} ({totalProjects > 0 ? Math.round((openCount / totalProjects) * 100) : 0}%)
-                      </tspan>
-                    </>
-                  ) : (
-                    <>
-                      <tspan x="50%" dy="-6" fontSize="2.2rem" fontWeight="800" fill="#111827">
-                        {totalProjects}
-                      </tspan>
-                      <tspan x="50%" dy="24" fontSize="0.85rem" fontWeight="600" fill="#6B7280">
-                        Total Projects
-                      </tspan>
-                    </>
-                  )}
-                </text>
-                <Tooltip content={<CustomDonutTooltip />} />
-                {isPresentation && <Legend verticalAlign="bottom" height={36} iconType="circle" />}
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+            </div>
+          )}
         </div>
       );
     }
