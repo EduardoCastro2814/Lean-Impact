@@ -232,6 +232,25 @@ export const Dashboard: React.FC = () => {
       </g>
     );
   };
+
+  const renderQuarterLegend = () => {
+    return (
+      <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', fontSize: isPresentation ? '0.95rem' : '0.8rem', fontWeight: 700, marginTop: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ display: 'inline-block', width: isPresentation ? '14px' : '10px', height: isPresentation ? '14px' : '10px', backgroundColor: '#334155', borderRadius: '2px' }} />
+          <span style={{ color: '#4B5563' }}>Target Savings</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ display: 'inline-block', width: isPresentation ? '14px' : '10px', height: isPresentation ? '14px' : '10px', backgroundColor: '#22C55E', borderRadius: '2px' }} />
+          <span style={{ color: '#4B5563' }}>Actual (Met / Exceeded)</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ display: 'inline-block', width: isPresentation ? '14px' : '10px', height: isPresentation ? '14px' : '10px', backgroundColor: '#EF4444', borderRadius: '2px' }} />
+          <span style={{ color: '#4B5563' }}>Actual (Behind Target)</span>
+        </div>
+      </div>
+    );
+  };
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
   const [chartRenderKey, setChartRenderKey] = useState(0);
 
@@ -588,7 +607,7 @@ export const Dashboard: React.FC = () => {
                 <XAxis dataKey="name" />
                 <YAxis tickFormatter={formatCurrency} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                <Legend />
+                <Legend content={renderQuarterLegend} />
                 <Bar dataKey="Target" name="Target Savings" fill="#334155" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontWeight: 700 }} />
                 <Bar dataKey="Actual" name="Actual Savings" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontWeight: 700 }}>
                   {quarterlySavingsDataForChart.map((entry: any, idx: number) => {
@@ -857,7 +876,7 @@ export const Dashboard: React.FC = () => {
                   <XAxis dataKey="name" stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} />
                   <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                   <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Legend />
+                  <Legend content={renderQuarterLegend} />
                   <Bar dataKey="Target" name="Target Savings" fill="#334155" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }} />
                   <Bar dataKey="Actual" name="Actual Savings" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }}>
                     {quarterlySavingsDataForChart.map((entry: any, idx: number) => {
