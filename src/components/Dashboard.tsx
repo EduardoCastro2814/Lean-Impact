@@ -22,6 +22,7 @@ import {
 import html2canvas from 'html2canvas';
 import { dbService, getFyDisplayLabel, getFiscalMonthIndex, getProjectPeriodSavings } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen, SavingsTarget } from '../lib/supabaseClient';
+import flexLogo from '../assets/flex_logo.png';
 
 const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -108,20 +109,66 @@ export const Dashboard: React.FC = () => {
     return null;
   };
 
+  const formatTrendLabelValue = (val: number, isTarget: boolean) => {
+    const absVal = Math.abs(val);
+    if (absVal >= 1000000) {
+      return `$${(val / 1000000).toFixed(1)}M`;
+    }
+    if (absVal >= 1000) {
+      if (isTarget) {
+        return `$${Math.round(val / 1000)}K`;
+      } else {
+        return `$${(val / 1000).toFixed(1)}K`;
+      }
+    }
+    return `$${val}`;
+  };
+
   const CustomActualLabel = (props: any) => {
     const { x, y, index } = props;
     if (index === undefined || index === null) return null;
     const row = cumulativeQuarterTrendData[index];
     if (!row) return null;
     const actualVal = row['Actual Savings'];
-    const formattedVal = formatShortCurrency(actualVal);
+    const targetVal = row['Target Savings'];
+    const formattedVal = formatTrendLabelValue(actualVal, false);
+    
+    const isBelowTarget = actualVal < targetVal;
+    const yOffset = isBelowTarget ? 20 : -10;
+
     return (
       <text
         x={x}
-        y={y - 12}
-        fill="#111827"
-        fontSize={isPresentation ? 14 : 11}
-        fontWeight="800"
+        y={y + yOffset}
+        fill="#009AAD"
+        fontSize="12px"
+        fontWeight="700"
+        textAnchor="middle"
+      >
+        {formattedVal}
+      </text>
+    );
+  };
+
+  const CustomTargetLabel = (props: any) => {
+    const { x, y, index } = props;
+    if (index === undefined || index === null) return null;
+    const row = cumulativeQuarterTrendData[index];
+    if (!row) return null;
+    const actualVal = row['Actual Savings'];
+    const targetVal = row['Target Savings'];
+    const formattedVal = formatTrendLabelValue(targetVal, true);
+    
+    const isBelowActual = targetVal <= actualVal;
+    const yOffset = isBelowActual ? 20 : -10;
+
+    return (
+      <text
+        x={x}
+        y={y + yOffset}
+        fill="#374151"
+        fontSize="12px"
+        fontWeight="700"
         textAnchor="middle"
       >
         {formattedVal}
@@ -424,7 +471,7 @@ export const Dashboard: React.FC = () => {
                   <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.08} activeDot={false} legendType="none" />
                   <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.08} activeDot={false} legendType="none" />
                   <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={5} label={<CustomActualLabel />} dot={{ r: 6 }} activeDot={{ r: 8 }} />
-                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={3} strokeDasharray="5 5" dot={false} />
+                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={3} strokeDasharray="5 5" label={<CustomTargetLabel />} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -679,7 +726,7 @@ export const Dashboard: React.FC = () => {
           {/* Isolated container for high resolution PNG exports (excludes control buttons) */}
           <div id="export-container-trend" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: '#FFFFFF' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>
+              <span style={{ fontWeight: isPresentation ? 600 : 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827', textAlign: isPresentation ? 'center' : 'left', width: '100%', display: 'block' }}>
                 Target vs Actual Savings Trend (Cumulative)
               </span>
             </div>
@@ -695,7 +742,7 @@ export const Dashboard: React.FC = () => {
                   <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.08} activeDot={false} legendType="none" />
                   <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.08} activeDot={false} legendType="none" />
                   <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={5} label={<CustomActualLabel />} dot={{ r: isPresentation ? 6 : 4 }} activeDot={{ r: isPresentation ? 8 : 6 }} />
-                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={3} strokeDasharray="5 5" dot={false} />
+                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={3} strokeDasharray="5 5" label={<CustomTargetLabel />} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -747,7 +794,7 @@ export const Dashboard: React.FC = () => {
           {/* Isolated container for high resolution PNG exports (excludes control buttons) */}
           <div id="export-container-quarter" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: '#FFFFFF' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>
+              <span style={{ fontWeight: isPresentation ? 600 : 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827', textAlign: isPresentation ? 'center' : 'left', width: '100%', display: 'block' }}>
                 Quarter Performance
               </span>
             </div>
@@ -813,7 +860,7 @@ export const Dashboard: React.FC = () => {
           {/* Isolated container for high resolution PNG exports (excludes control buttons) */}
           <div id="export-container-monthly" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: '#FFFFFF' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>
+              <span style={{ fontWeight: isPresentation ? 600 : 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827', textAlign: isPresentation ? 'center' : 'left', width: '100%', display: 'block' }}>
                 Monthly Savings Breakdown
               </span>
             </div>
@@ -882,7 +929,7 @@ export const Dashboard: React.FC = () => {
           {/* Isolated container for high resolution PNG exports (excludes control buttons) */}
           <div id="export-container-projectStatus" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', backgroundColor: '#FFFFFF' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>
+              <span style={{ fontWeight: isPresentation ? 600 : 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827', textAlign: isPresentation ? 'center' : 'left', width: '100%', display: 'block' }}>
                 Project Status Overview
               </span>
             </div>
@@ -1095,38 +1142,60 @@ export const Dashboard: React.FC = () => {
         }}
       >
         {isPresentation ? (
-          /* PRESENTATION MODE: KPI CARDS ONLY */
+          /* PRESENTATION MODE: TOP EXECUTIVE HEADER ROW & KPI CARDS */
           <div 
             style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(4, 1fr)', 
-              gap: '16px', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
               width: '100%',
               marginBottom: '4px'
             }}
           >
-            {/* Target Card */}
-            <div className="card" style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>Target</span>
-              <span style={{ fontSize: '3.8rem', fontWeight: 800, color: '#374151', lineHeight: 1 }}>{formatCurrency(annualTarget)}</span>
+            {/* Executive Header on the Left */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <img src={flexLogo} alt="Flex Logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <h1 style={{ fontSize: '32px', fontWeight: 700, color: '#374151', margin: 0, lineHeight: 1.1 }}>
+                  {fiscalYear} Savings Performance
+                </h1>
+                <span style={{ fontSize: '14px', color: '#6B7280', marginTop: '2px', fontWeight: 500 }}>
+                  Lean Savings Dashboard
+                </span>
+              </div>
             </div>
 
-            {/* Current Savings Card */}
-            <div className="card" style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>Current Savings</span>
-              <span style={{ fontSize: '3.8rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
-            </div>
+            {/* KPI Cards on the Right */}
+            <div 
+              style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                alignItems: 'center'
+              }}
+            >
+              {/* Target Card */}
+              <div className="card" style={{ padding: '8px 16px', minWidth: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px', height: '80px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>Target</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#374151', lineHeight: 1 }}>{formatCurrency(annualTarget)}</span>
+              </div>
 
-            {/* Target Achievement Card */}
-            <div className="card" style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>Achievement</span>
-              <span style={{ fontSize: '3.8rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{targetAchievementPercent.toFixed(1)}%</span>
-            </div>
+              {/* Current Savings Card */}
+              <div className="card" style={{ padding: '8px 16px', minWidth: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px', height: '80px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>Current Savings</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
+              </div>
 
-            {/* Gap Card */}
-            <div className="card" style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>Gap</span>
-              <span style={{ fontSize: '3.8rem', fontWeight: 800, color: '#E53935', lineHeight: 1 }}>{formatCurrency(savingsGap)}</span>
+              {/* Target Achievement Card */}
+              <div className="card" style={{ padding: '8px 16px', minWidth: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px', height: '80px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>Achievement</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{targetAchievementPercent.toFixed(1)}%</span>
+              </div>
+
+              {/* Gap Card */}
+              <div className="card" style={{ padding: '8px 16px', minWidth: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px', height: '80px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>Gap</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#E53935', lineHeight: 1 }}>{formatCurrency(savingsGap)}</span>
+              </div>
             </div>
           </div>
         ) : (
@@ -1224,22 +1293,17 @@ export const Dashboard: React.FC = () => {
           </>
         )}
 
-        {/* MAIN ANALYTICS GRID */}
         {isPresentation ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minHeight: 0 }}>
-            {/* Row 1: Target vs Actual Savings Trend - Full Width */}
-            <div style={{ height: '35vh', minHeight: 0 }}>
+            {/* Middle Row: Target vs Actual Savings Trend - Full Width */}
+            <div style={{ height: '44vh', minHeight: 0 }}>
               {renderChartCard('trend')}
             </div>
             
-            {/* Row 2: Left: Quarter Performance, Right: Project Status Overview - Equal Size */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', height: '27vh', minHeight: 0 }}>
+            {/* Bottom Row: 3-column side-by-side charts sharing equal space */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', height: '36vh', minHeight: 0 }}>
               {renderChartCard('quarter')}
               {renderChartCard('projectStatus')}
-            </div>
-            
-            {/* Row 3: Monthly Savings Breakdown - Full Width */}
-            <div style={{ height: '20vh', minHeight: 0 }}>
               {renderChartCard('monthly')}
             </div>
           </div>
