@@ -14,7 +14,10 @@ import {
   CartesianGrid, 
   Tooltip, 
   Legend, 
-  ResponsiveContainer
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
 import html2canvas from 'html2canvas';
 import { dbService, getFyDisplayLabel, getFiscalMonthIndex, getProjectPeriodSavings } from '../lib/supabaseClient';
@@ -108,6 +111,85 @@ export const Dashboard: React.FC = () => {
         </text>
       </g>
     );
+  };
+  
+  const renderPieLabel = (props: any) => {
+    const { cx, cy, midAngle, outerRadius, name, percent } = props;
+    const RADIAN = Math.PI / 180;
+    const sin = Math.sin(-RADIAN * midAngle);
+    const cos = Math.cos(-RADIAN * midAngle);
+    
+    const offset = isPresentation ? 15 : 10;
+    const lineLen = isPresentation ? 25 : 15;
+    
+    const sx = cx + (outerRadius + 5) * cos;
+    const sy = cy + (outerRadius + 5) * sin;
+    const mx = cx + (outerRadius + offset) * cos;
+    const my = cy + (outerRadius + offset) * sin;
+    const ex = mx + (cos >= 0 ? 1 : -1) * lineLen;
+    const ey = my;
+    const textAnchor = cos >= 0 ? 'start' : 'end';
+    
+    const pct = percent !== undefined ? Math.round(percent * 100) : 0;
+    const labelColor = name.startsWith('Closed') ? '#009AAD' : '#4FC3D7';
+    
+    return (
+      <g>
+        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke="#9CA3AF" fill="none" strokeWidth={isPresentation ? 2 : 1} />
+        <circle cx={ex} cy={ey} r={isPresentation ? 3 : 2} fill="#9CA3AF" />
+        <text 
+          x={ex + (cos >= 0 ? 8 : -8)} 
+          y={ey - (isPresentation ? 6 : 4)} 
+          textAnchor={textAnchor} 
+          fill="#374151" 
+          fontSize={isPresentation ? 16 : 12} 
+          fontWeight="700"
+        >
+          {name.split(' ')[0]}:
+        </text>
+        <text 
+          x={ex + (cos >= 0 ? 8 : -8)} 
+          y={ey + (isPresentation ? 16 : 10)} 
+          textAnchor={textAnchor} 
+          fill={labelColor} 
+          fontSize={isPresentation ? 18 : 13} 
+          fontWeight="800"
+        >
+          {pct}%
+        </text>
+      </g>
+    );
+  };
+
+  const CustomDonutTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const value = data.value;
+      const name = data.name;
+      const total = approvedCount + openCount;
+      const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+      
+      return (
+        <div style={{ 
+          backgroundColor: '#FFFFFF', 
+          padding: '12px 16px', 
+          border: '1px solid #E5E7EB', 
+          borderRadius: '8px', 
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' 
+        }}>
+          <p style={{ fontWeight: 800, color: '#111827', margin: '0 0 6px 0', fontSize: '0.9rem' }}>
+            {name}
+          </p>
+          <p style={{ margin: '4px 0', fontSize: '0.85rem', color: '#374151', fontWeight: 600 }}>
+            {value} {value === 1 ? 'Project' : 'Projects'}
+          </p>
+          <p style={{ margin: '4px 0', fontSize: isPresentation ? '1rem' : '0.85rem', color: data.color, fontWeight: 700 }}>
+            {pct}%
+          </p>
+        </div>
+      );
+    }
+    return null;
   };
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
   const [chartRenderKey, setChartRenderKey] = useState(0);
@@ -324,22 +406,11 @@ export const Dashboard: React.FC = () => {
     };
   });
 
-  // 6. Quarterly FTE Headcount Savings Data
-  const fteData = quarters.map(q => {
-    const approvedFteVal = approvedFiltered
-      .filter(p => p.fiscal_year === fiscalYear && p.fiscal_quarter === q)
-      .reduce((sum, p) => sum + p.fte_savings, 0);
-
-    const openFteVal = openFiltered
-      .filter(p => p.fiscal_year === fiscalYear && p.fiscal_quarter === q)
-      .reduce((sum, p) => sum + p.fte_savings, 0);
-
-    return {
-      name: q,
-      'Approved FTE': approvedFteVal,
-      'Open FTE': openFteVal
-    };
-  });
+  // 6. Project Status Overview Data (Donut Chart)
+  const donutData = [
+    { name: 'Closed Projects', value: approvedCount, color: '#009AAD' },
+    { name: 'Open Projects', value: openCount, color: '#4FC3D7' }
+  ];
 
   const togglePresentationMode = () => {
     const container = document.getElementById('dashboard-presentation-container');
@@ -461,19 +532,42 @@ export const Dashboard: React.FC = () => {
           </BarChart>
         </ResponsiveContainer>
       );
-    } else if (expandedChart === 'fte') {
-      chartTitle = 'Productivity Impact (Quarterly FTE Headcount Savings)';
+    } else if (expandedChart === 'projectStatus') {
+      chartTitle = 'Project Status Overview';
+      const totalProjects = approvedCount + openCount;
       chartComponent = (
         <ResponsiveContainer width="100%" height={500}>
-          <BarChart data={fteData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip formatter={(value) => `${Number(value).toFixed(1)} FTEs`} />
-            <Legend />
-            <Bar dataKey="Approved FTE" fill="#006B78" />
-            <Bar dataKey="Open FTE" fill="#7DD3FC" />
-          </BarChart>
+          <PieChart margin={{ top: 40, right: 50, bottom: 40, left: 50 }}>
+            <Pie
+              data={donutData}
+              cx="50%"
+              cy="50%"
+              innerRadius={110}
+              outerRadius={160}
+              paddingAngle={3}
+              dataKey="value"
+              label={renderPieLabel}
+            >
+              {donutData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Pie>
+            <text
+              x="50%"
+              y="50%"
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              <tspan x="50%" dy="-12" fontSize="3.5rem" fontWeight="800" fill="#111827">
+                {totalProjects}
+              </tspan>
+              <tspan x="50%" dy="40" fontSize="1.25rem" fontWeight="600" fill="#6B7280">
+                Total Projects
+              </tspan>
+            </text>
+            <Tooltip content={<CustomDonutTooltip />} />
+            <Legend verticalAlign="bottom" height={36} iconType="circle" />
+          </PieChart>
         </ResponsiveContainer>
       );
     }
@@ -536,7 +630,7 @@ export const Dashboard: React.FC = () => {
     );
   };
 
-  const renderChartCard = (type: 'trend' | 'quarter' | 'monthly' | 'fte') => {
+  const renderChartCard = (type: 'trend' | 'quarter' | 'monthly' | 'projectStatus') => {
     if (type === 'trend') {
       return (
         <div 
@@ -697,11 +791,12 @@ export const Dashboard: React.FC = () => {
       );
     }
 
-    if (type === 'fte') {
+    if (type === 'projectStatus') {
+      const totalProjects = approvedCount + openCount;
       return (
         <div 
           className="card" 
-          id="fte-chart-tile" 
+          id="project-status-chart-tile" 
           style={{ 
             padding: isPresentation ? '16px 20px' : '20px', 
             display: 'flex', 
@@ -714,13 +809,13 @@ export const Dashboard: React.FC = () => {
             border: '1px solid var(--color-border)',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
           }}
-          onClick={() => !isPresentation && setExpandedChart('fte')}
+          onClick={() => !isPresentation && setExpandedChart('projectStatus')}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Productivity Impact (FTE Savings)</span>
+            <span style={{ fontWeight: 800, fontSize: isPresentation ? '1.25rem' : '1rem', color: '#111827' }}>Project Status Overview</span>
             {!isPresentation && (
               <button 
-                onClick={(e) => { e.stopPropagation(); setExpandedChart('fte'); }} 
+                onClick={(e) => { e.stopPropagation(); setExpandedChart('projectStatus'); }} 
                 className="btn-export"
                 style={{ padding: '4px 8px', fontSize: '0.75rem' }}
               >
@@ -730,15 +825,37 @@ export const Dashboard: React.FC = () => {
           </div>
           <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
             <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-              <BarChart data={fteData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} />
-                <YAxis stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value) => `${Number(value).toFixed(1)} FTEs`} />
-                {isPresentation && <Legend />}
-                <Bar dataKey="Approved FTE" fill="#006B78" name="Approved FTE" />
-                <Bar dataKey="Open FTE" fill="#7DD3FC" name="Open FTE" />
-              </BarChart>
+              <PieChart margin={isPresentation ? { top: 20, right: 30, bottom: 20, left: 30 } : { top: 10, right: 20, bottom: 10, left: 20 }}>
+                <Pie
+                  data={donutData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={isPresentation ? 85 : 55}
+                  outerRadius={isPresentation ? 125 : 85}
+                  paddingAngle={3}
+                  dataKey="value"
+                  label={renderPieLabel}
+                >
+                  {donutData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <text
+                  x="50%"
+                  y="50%"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                >
+                  <tspan x="50%" dy={isPresentation ? "-10" : "-6"} fontSize={isPresentation ? "3.2rem" : "2.2rem"} fontWeight="800" fill="#111827">
+                    {totalProjects}
+                  </tspan>
+                  <tspan x="50%" dy={isPresentation ? "34" : "24"} fontSize={isPresentation ? "1.2rem" : "0.85rem"} fontWeight="600" fill="#6B7280">
+                    Total Projects
+                  </tspan>
+                </text>
+                <Tooltip content={<CustomDonutTooltip />} />
+                {isPresentation && <Legend verticalAlign="bottom" height={36} iconType="circle" />}
+              </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -1011,14 +1128,14 @@ export const Dashboard: React.FC = () => {
               {renderChartCard('trend')}
               {renderChartCard('quarter')}
               {renderChartCard('monthly')}
-              {renderChartCard('fte')}
+              {renderChartCard('projectStatus')}
             </>
           ) : (
             <>
               {renderChartCard('trend')}
               {renderChartCard('monthly')}
               {renderChartCard('quarter')}
-              {renderChartCard('fte')}
+              {renderChartCard('projectStatus')}
             </>
           )}
         </div>
