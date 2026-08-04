@@ -75,53 +75,7 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isPresentation, setIsPresentation] = useState(false);
 
-  const renderPieLabel = (props: any) => {
-    const { cx, cy, midAngle, outerRadius, name, percent } = props;
-    const RADIAN = Math.PI / 180;
-    const sin = Math.sin(-RADIAN * midAngle);
-    const cos = Math.cos(-RADIAN * midAngle);
-    
-    const offset = isPresentation ? 15 : 10;
-    const lineLen = isPresentation ? 25 : 15;
-    
-    const sx = cx + (outerRadius + 5) * cos;
-    const sy = cy + (outerRadius + 5) * sin;
-    const mx = cx + (outerRadius + offset) * cos;
-    const my = cy + (outerRadius + offset) * sin;
-    const ex = mx + (cos >= 0 ? 1 : -1) * lineLen;
-    const ey = my;
-    const textAnchor = cos >= 0 ? 'start' : 'end';
-    
-    const pct = percent !== undefined ? Math.round(percent * 100) : 0;
-    const labelColor = name.startsWith('Closed') ? '#009AAD' : '#4FC3D7';
-    
-    return (
-      <g>
-        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke="#9CA3AF" fill="none" strokeWidth={isPresentation ? 2 : 1} />
-        <circle cx={ex} cy={ey} r={isPresentation ? 3 : 2} fill="#9CA3AF" />
-        <text 
-          x={ex + (cos >= 0 ? 8 : -8)} 
-          y={ey - (isPresentation ? 6 : 4)} 
-          textAnchor={textAnchor} 
-          fill="#374151" 
-          fontSize={isPresentation ? 16 : 12} 
-          fontWeight="700"
-        >
-          {name.split(' ')[0]}:
-        </text>
-        <text 
-          x={ex + (cos >= 0 ? 8 : -8)} 
-          y={ey + (isPresentation ? 16 : 10)} 
-          textAnchor={textAnchor} 
-          fill={labelColor} 
-          fontSize={isPresentation ? 18 : 13} 
-          fontWeight="800"
-        >
-          {pct}%
-        </text>
-      </g>
-    );
-  };
+
 
   const CustomDonutTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -559,10 +513,11 @@ export const Dashboard: React.FC = () => {
           <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: '0 0 20px 0', textAlign: 'left' }}>
             {chartTitle}
           </h3>
-          <div style={{ width: '100%', height: '420px', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
+          <div style={{ width: '100%', height: '420px', minHeight: 0, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: '32px' }}>
+            {/* Donut Container */}
+            <div style={{ flex: 1.2, height: '100%', minWidth: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                   <Pie
                     data={donutData}
                     cx="50%"
@@ -571,7 +526,7 @@ export const Dashboard: React.FC = () => {
                     outerRadius={160}
                     paddingAngle={3}
                     dataKey="value"
-                    label={renderPieLabel}
+                    label={false}
                   >
                     {donutData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -583,10 +538,10 @@ export const Dashboard: React.FC = () => {
                     textAnchor="middle"
                     dominantBaseline="middle"
                   >
-                    <tspan x="50%" dy="-6" fontSize="3rem" fontWeight="800" fill="#111827">
+                    <tspan x="50%" dy="-12" fontSize="3.5rem" fontWeight="800" fill="#111827">
                       {totalProjects}
                     </tspan>
-                    <tspan x="50%" dy="30" fontSize="1.1rem" fontWeight="600" fill="#6B7280">
+                    <tspan x="50%" dy="40" fontSize="1.25rem" fontWeight="700" fill="#6B7280">
                       Total Projects
                     </tspan>
                   </text>
@@ -595,22 +550,49 @@ export const Dashboard: React.FC = () => {
               </ResponsiveContainer>
             </div>
             
-            {/* HTML Legend at the bottom */}
+            {/* Legend on the right side */}
             <div style={{ 
+              flex: 0.8, 
               display: 'flex', 
+              flexDirection: 'column', 
               justifyContent: 'center', 
-              gap: '32px', 
-              marginTop: '16px',
-              fontSize: '1.1rem', 
-              fontWeight: 700 
+              gap: '24px',
+              paddingLeft: '24px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#009AAD' }} />
-                <span style={{ color: '#111827' }}>Closed Projects: {approvedCount} ({closedPct}%)</span>
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                <span style={{ 
+                  display: 'inline-block', 
+                  width: '18px', 
+                  height: '18px', 
+                  borderRadius: '50%', 
+                  backgroundColor: '#009AAD', 
+                  marginTop: '8px',
+                  flexShrink: 0
+                }} />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '1.35rem', fontWeight: 700, color: '#4B5563' }}>Closed Projects</span>
+                  <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#009AAD', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                    {approvedCount} Projects ({closedPct}%)
+                  </span>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#4FC3D7' }} />
-                <span style={{ color: '#111827' }}>Open Projects: {openCount} ({openPct}%)</span>
+              
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                <span style={{ 
+                  display: 'inline-block', 
+                  width: '18px', 
+                  height: '18px', 
+                  borderRadius: '50%', 
+                  backgroundColor: '#4FC3D7', 
+                  marginTop: '8px',
+                  flexShrink: 0
+                }} />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '1.35rem', fontWeight: 700, color: '#4B5563' }}>Open Projects</span>
+                  <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#4FC3D7', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                    {openCount} Projects ({openPct}%)
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -905,19 +887,20 @@ export const Dashboard: React.FC = () => {
               </span>
             </div>
             
-            <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' } : { flex: 1, width: '100%', height: '310px', minHeight: '310px', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
+            <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: '24px' } : { flex: 1, width: '100%', height: '310px', minHeight: '310px', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+              {/* Donut Container */}
+              <div style={{ flex: 1.2, height: '100%', minWidth: 0 }}>
                 <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-                  <PieChart margin={isPresentation ? { top: 10, right: 10, bottom: 10, left: 10 } : { top: 5, right: 10, bottom: 5, left: 10 }}>
+                  <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                     <Pie
                       data={donutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={isPresentation ? 110 : 70}
-                      outerRadius={isPresentation ? 160 : 105}
+                      innerRadius={isPresentation ? 80 : 55}
+                      outerRadius={isPresentation ? 120 : 80}
                       paddingAngle={3}
                       dataKey="value"
-                      label={isPresentation ? false : renderPieLabel}
+                      label={false}
                     >
                       {donutData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -929,10 +912,10 @@ export const Dashboard: React.FC = () => {
                       textAnchor="middle"
                       dominantBaseline="middle"
                     >
-                      <tspan x="50%" dy={isPresentation ? "-10" : "-6"} fontSize={isPresentation ? "3.6rem" : "2.2rem"} fontWeight="800" fill="#111827">
+                      <tspan x="50%" dy={isPresentation ? "-12" : "-8"} fontSize={isPresentation ? "3.5rem" : "2.2rem"} fontWeight="800" fill="#111827">
                         {totalProjects}
                       </tspan>
-                      <tspan x="50%" dy={isPresentation ? "34" : "24"} fontSize={isPresentation ? "1.25rem" : "0.85rem"} fontWeight="600" fill="#6B7280">
+                      <tspan x="50%" dy={isPresentation ? "34" : "24"} fontSize={isPresentation ? "1.1rem" : "0.85rem"} fontWeight="700" fill="#6B7280">
                         Total Projects
                       </tspan>
                     </text>
@@ -941,23 +924,49 @@ export const Dashboard: React.FC = () => {
                 </ResponsiveContainer>
               </div>
 
-              {/* Status details displayed below the Donut chart (preventing overlap inside the donut) */}
+              {/* Legend on the right side */}
               <div style={{ 
+                flex: 0.8, 
                 display: 'flex', 
+                flexDirection: 'column', 
                 justifyContent: 'center', 
-                gap: isPresentation ? '32px' : '16px', 
-                marginTop: isPresentation ? '12px' : '6px',
-                paddingBottom: '4px',
-                fontSize: isPresentation ? '1.25rem' : '0.85rem', 
-                fontWeight: 700 
+                gap: isPresentation ? '20px' : '10px',
+                paddingLeft: isPresentation ? '16px' : '4px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#009AAD' }} />
-                  <span style={{ color: '#111827' }}>Closed Projects: {approvedCount} ({closedPct}%)</span>
+                <div style={{ display: 'flex', gap: isPresentation ? '14px' : '8px', alignItems: 'flex-start' }}>
+                  <span style={{ 
+                    display: 'inline-block', 
+                    width: isPresentation ? '16px' : '10px', 
+                    height: isPresentation ? '16px' : '10px', 
+                    borderRadius: '50%', 
+                    backgroundColor: '#009AAD', 
+                    marginTop: isPresentation ? '8px' : '4px',
+                    flexShrink: 0
+                  }} />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: isPresentation ? '1.25rem' : '0.9rem', fontWeight: 700, color: '#4B5563' }}>Closed Projects</span>
+                    <span style={{ fontSize: isPresentation ? '1.6rem' : '1.1rem', fontWeight: 800, color: '#009AAD', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                      {approvedCount} Projects ({closedPct}%)
+                    </span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#4FC3D7' }} />
-                  <span style={{ color: '#111827' }}>Open Projects: {openCount} ({openPct}%)</span>
+                
+                <div style={{ display: 'flex', gap: isPresentation ? '14px' : '8px', alignItems: 'flex-start' }}>
+                  <span style={{ 
+                    display: 'inline-block', 
+                    width: isPresentation ? '16px' : '10px', 
+                    height: isPresentation ? '16px' : '10px', 
+                    borderRadius: '50%', 
+                    backgroundColor: '#4FC3D7', 
+                    marginTop: isPresentation ? '8px' : '4px',
+                    flexShrink: 0
+                  }} />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: isPresentation ? '1.25rem' : '0.9rem', fontWeight: 700, color: '#4B5563' }}>Open Projects</span>
+                    <span style={{ fontSize: isPresentation ? '1.6rem' : '1.1rem', fontWeight: 800, color: '#4FC3D7', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                      {openCount} Projects ({openPct}%)
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
