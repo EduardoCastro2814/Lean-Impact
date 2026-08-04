@@ -54,10 +54,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p style={{ margin: '4px 0', fontSize: '0.85rem', color: '#374151', fontWeight: 600 }}>
           Target: <span style={{ float: 'right', marginLeft: '12px', fontWeight: 700 }}>{formatCurrency(target)}</span>
         </p>
-        <p style={{ margin: '4px 0', fontSize: '0.85rem', color: '#009AAD', fontWeight: 600 }}>
+        <p style={{ margin: '4px 0', fontSize: '0.85rem', color: '#16A34A', fontWeight: 600 }}>
           Actual: <span style={{ float: 'right', marginLeft: '12px', fontWeight: 700 }}>{formatCurrency(actual)}</span>
         </p>
-        <p style={{ margin: '4px 0', fontSize: '0.85rem', color: gap > 0 ? '#E53935' : '#16A34A', fontWeight: 700 }}>
+        <p style={{ margin: '4px 0', fontSize: '0.85rem', color: gap > 0 ? '#EF4444' : '#16A34A', fontWeight: 700 }}>
           {gap >= 0 ? 'Gap to Target:' : 'Surplus to Target:'} <span style={{ float: 'right', marginLeft: '12px', fontWeight: 800 }}>{formatCurrency(Math.abs(gap))}</span>
         </p>
       </div>
@@ -140,7 +140,7 @@ export const Dashboard: React.FC = () => {
       <text
         x={x}
         y={y + yOffset}
-        fill="#009AAD"
+        fill="#16A34A"
         fontSize="12px"
         fontWeight="700"
         textAnchor="middle"
@@ -166,7 +166,7 @@ export const Dashboard: React.FC = () => {
       <text
         x={x}
         y={y + yOffset}
-        fill="#374151"
+        fill="#FACC15"
         fontSize="12px"
         fontWeight="700"
         textAnchor="middle"
@@ -413,8 +413,8 @@ export const Dashboard: React.FC = () => {
 
   // 6. Project Status Overview Data (Donut Chart)
   const donutData = [
-    { name: 'Closed Projects', value: approvedCount, color: '#009AAD' },
-    { name: 'Open Projects', value: openCount, color: '#4FC3D7' }
+    { name: 'Closed Projects', value: approvedCount, color: '#22C55E' },
+    { name: 'Open Projects', value: openCount, color: '#FACC15' }
   ];
 
   const togglePresentationMode = () => {
@@ -468,10 +468,10 @@ export const Dashboard: React.FC = () => {
                   <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.08} activeDot={false} legendType="none" />
-                  <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.08} activeDot={false} legendType="none" />
-                  <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={5} label={<CustomActualLabel />} dot={{ r: 6 }} activeDot={{ r: 8 }} />
-                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={3} strokeDasharray="5 5" label={<CustomTargetLabel />} dot={false} />
+                  <Area dataKey="rangeRed" stroke="none" fill="#EF4444" fillOpacity={0.08} activeDot={false} legendType="none" />
+                  <Area dataKey="rangeGreen" stroke="none" fill="#22C55E" fillOpacity={0.08} activeDot={false} legendType="none" />
+                  <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#22C55E" strokeWidth={5} label={<CustomActualLabel />} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#FACC15" strokeWidth={3} strokeDasharray="5 5" label={<CustomTargetLabel />} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -493,9 +493,9 @@ export const Dashboard: React.FC = () => {
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid #E5E7EB', backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }}>
                       <td style={{ padding: '10px 16px', fontWeight: 600 }}>{row.name}</td>
-                      <td style={{ padding: '10px 16px' }}>{formatCurrency(row['Target Savings'])}</td>
-                      <td style={{ padding: '10px 16px', color: '#009AAD', fontWeight: 600 }}>{formatCurrency(row['Actual Savings'])}</td>
-                      <td style={{ padding: '10px 16px', color: isPositive ? '#009AAD' : '#E53935', fontWeight: 600 }}>
+                      <td style={{ padding: '10px 16px', color: '#FACC15', fontWeight: 600 }}>{formatCurrency(row['Target Savings'])}</td>
+                      <td style={{ padding: '10px 16px', color: '#16A34A', fontWeight: 600 }}>{formatCurrency(row['Actual Savings'])}</td>
+                      <td style={{ padding: '10px 16px', color: isPositive ? '#16A34A' : '#EF4444', fontWeight: 600 }}>
                         {isPositive ? '+' : ''}{formatCurrency(row.Variance)}
                       </td>
                     </tr>
@@ -521,8 +521,8 @@ export const Dashboard: React.FC = () => {
                 <YAxis tickFormatter={formatCurrency} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Legend />
-                <Bar dataKey="OP Contribution" name="OP Contribution" stackId="a" fill="#009AAD" />
-                <Bar dataKey="One Time Savings" name="One Time Savings" stackId="a" fill="#4FC3D7" label={renderStackedBarLabel} />
+                <Bar dataKey="OP Contribution" name="OP Contribution" stackId="a" fill="#16A34A" />
+                <Bar dataKey="One Time Savings" name="One Time Savings" stackId="a" fill="#86EFAC" label={renderStackedBarLabel} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -543,8 +543,8 @@ export const Dashboard: React.FC = () => {
                 <YAxis tickFormatter={formatCurrency} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Legend />
-                <Bar dataKey="Target" name="Target Savings" fill="#374151" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontWeight: 700 }} />
-                <Bar dataKey="Actual" name="Actual Savings" fill="#009AAD" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontWeight: 700 }} />
+                <Bar dataKey="Target" name="Target Savings" fill="#FACC15" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontWeight: 700 }} />
+                <Bar dataKey="Actual" name="Actual Savings" fill="#22C55E" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontWeight: 700 }} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -585,10 +585,10 @@ export const Dashboard: React.FC = () => {
                     textAnchor="middle"
                     dominantBaseline="middle"
                   >
-                    <tspan x="50%" dy="-12" fontSize="3.5rem" fontWeight="800" fill="#111827">
+                    <tspan x="50%" dy="-12" fontSize="3.5rem" fontWeight="800" fill="#374151">
                       {totalProjects}
                     </tspan>
-                    <tspan x="50%" dy="40" fontSize="1.25rem" fontWeight="700" fill="#6B7280">
+                    <tspan x="50%" dy="40" fontSize="1.25rem" fontWeight="700" fill="#374151">
                       Total Projects
                     </tspan>
                   </text>
@@ -612,13 +612,13 @@ export const Dashboard: React.FC = () => {
                   width: '18px', 
                   height: '18px', 
                   borderRadius: '50%', 
-                  backgroundColor: '#009AAD', 
+                  backgroundColor: '#22C55E', 
                   marginTop: '8px',
                   flexShrink: 0
                 }} />
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '1.35rem', fontWeight: 700, color: '#4B5563' }}>Closed Projects</span>
-                  <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#009AAD', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#22C55E', marginTop: '2px', whiteSpace: 'nowrap' }}>
                     {approvedCount} Projects ({closedPct}%)
                   </span>
                 </div>
@@ -739,10 +739,10 @@ export const Dashboard: React.FC = () => {
                   <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.08} activeDot={false} legendType="none" />
-                  <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.08} activeDot={false} legendType="none" />
-                  <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={5} label={<CustomActualLabel />} dot={{ r: isPresentation ? 6 : 4 }} activeDot={{ r: isPresentation ? 8 : 6 }} />
-                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={3} strokeDasharray="5 5" label={<CustomTargetLabel />} dot={false} />
+                  <Area dataKey="rangeRed" stroke="none" fill="#EF4444" fillOpacity={0.08} activeDot={false} legendType="none" />
+                  <Area dataKey="rangeGreen" stroke="none" fill="#22C55E" fillOpacity={0.08} activeDot={false} legendType="none" />
+                  <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#22C55E" strokeWidth={5} label={<CustomActualLabel />} dot={{ r: isPresentation ? 6 : 4 }} activeDot={{ r: isPresentation ? 8 : 6 }} />
+                  <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#FACC15" strokeWidth={3} strokeDasharray="5 5" label={<CustomTargetLabel />} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -807,8 +807,8 @@ export const Dashboard: React.FC = () => {
                   <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                   <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Legend />
-                  <Bar dataKey="Target" name="Target Savings" fill="#374151" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }} />
-                  <Bar dataKey="Actual" name="Actual Savings" fill="#009AAD" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }} />
+                  <Bar dataKey="Target" name="Target Savings" fill="#FACC15" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }} />
+                  <Bar dataKey="Actual" name="Actual Savings" fill="#22C55E" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -873,8 +873,8 @@ export const Dashboard: React.FC = () => {
                   <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                   <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Legend />
-                  <Bar dataKey="OP Contribution" name="OP Contribution" stackId="a" fill="#009AAD" />
-                  <Bar dataKey="One Time Savings" name="One Time Savings" stackId="a" fill="#4FC3D7" label={renderStackedBarLabel} />
+                  <Bar dataKey="OP Contribution" name="OP Contribution" stackId="a" fill="#16A34A" />
+                  <Bar dataKey="One Time Savings" name="One Time Savings" stackId="a" fill="#86EFAC" label={renderStackedBarLabel} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -959,10 +959,10 @@ export const Dashboard: React.FC = () => {
                       textAnchor="middle"
                       dominantBaseline="middle"
                     >
-                      <tspan x="50%" dy={isPresentation ? "-12" : "-8"} fontSize={isPresentation ? "3.5rem" : "2.2rem"} fontWeight="800" fill="#111827">
+                      <tspan x="50%" dy={isPresentation ? "-12" : "-8"} fontSize={isPresentation ? "3.5rem" : "2.2rem"} fontWeight="800" fill="#374151">
                         {totalProjects}
                       </tspan>
-                      <tspan x="50%" dy={isPresentation ? "34" : "24"} fontSize={isPresentation ? "1.1rem" : "0.85rem"} fontWeight="700" fill="#6B7280">
+                      <tspan x="50%" dy={isPresentation ? "34" : "24"} fontSize={isPresentation ? "1.1rem" : "0.85rem"} fontWeight="700" fill="#374151">
                         Total Projects
                       </tspan>
                     </text>
@@ -986,13 +986,13 @@ export const Dashboard: React.FC = () => {
                     width: isPresentation ? '16px' : '10px', 
                     height: isPresentation ? '16px' : '10px', 
                     borderRadius: '50%', 
-                    backgroundColor: '#009AAD', 
+                    backgroundColor: '#22C55E', 
                     marginTop: isPresentation ? '8px' : '4px',
                     flexShrink: 0
                   }} />
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: isPresentation ? '1.25rem' : '0.9rem', fontWeight: 700, color: '#4B5563' }}>Closed Projects</span>
-                    <span style={{ fontSize: isPresentation ? '1.6rem' : '1.1rem', fontWeight: 800, color: '#009AAD', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: isPresentation ? '1.6rem' : '1.1rem', fontWeight: 800, color: '#22C55E', marginTop: '2px', whiteSpace: 'nowrap' }}>
                       {approvedCount} Projects ({closedPct}%)
                     </span>
                   </div>
@@ -1004,13 +1004,13 @@ export const Dashboard: React.FC = () => {
                     width: isPresentation ? '16px' : '10px', 
                     height: isPresentation ? '16px' : '10px', 
                     borderRadius: '50%', 
-                    backgroundColor: '#4FC3D7', 
+                    backgroundColor: '#FACC15', 
                     marginTop: isPresentation ? '8px' : '4px',
                     flexShrink: 0
                   }} />
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: isPresentation ? '1.25rem' : '0.9rem', fontWeight: 700, color: '#4B5563' }}>Open Projects</span>
-                    <span style={{ fontSize: isPresentation ? '1.6rem' : '1.1rem', fontWeight: 800, color: '#4FC3D7', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: isPresentation ? '1.6rem' : '1.1rem', fontWeight: 800, color: '#FACC15', marginTop: '2px', whiteSpace: 'nowrap' }}>
                       {openCount} Projects ({openPct}%)
                     </span>
                   </div>
@@ -1176,25 +1176,25 @@ export const Dashboard: React.FC = () => {
               {/* Target Card */}
               <div className="card" style={{ padding: '8px 16px', minWidth: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px', height: '80px' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>Target</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#374151', lineHeight: 1 }}>{formatCurrency(annualTarget)}</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#FACC15', lineHeight: 1 }}>{formatCurrency(annualTarget)}</span>
               </div>
 
               {/* Current Savings Card */}
               <div className="card" style={{ padding: '8px 16px', minWidth: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px', height: '80px' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>Current Savings</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#16A34A', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
               </div>
 
               {/* Target Achievement Card */}
               <div className="card" style={{ padding: '8px 16px', minWidth: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px', height: '80px' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>Achievement</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{targetAchievementPercent.toFixed(1)}%</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#16A34A', lineHeight: 1 }}>{targetAchievementPercent.toFixed(1)}%</span>
               </div>
 
               {/* Gap Card */}
               <div className="card" style={{ padding: '8px 16px', minWidth: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px', height: '80px' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>Gap</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#E53935', lineHeight: 1 }}>{formatCurrency(savingsGap)}</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#EF4444', lineHeight: 1 }}>{formatCurrency(savingsGap)}</span>
               </div>
             </div>
           </div>
@@ -1207,7 +1207,7 @@ export const Dashboard: React.FC = () => {
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: 0 }}>
                   Annual Target vs Current Savings Pipeline
                 </h3>
-                <span style={{ fontSize: '0.875rem', fontWeight: 700, padding: '4px 12px', backgroundColor: '#F0F9FF', color: '#0369A1', borderRadius: '9999px' }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 700, padding: '4px 12px', backgroundColor: '#FEF08A', color: '#374151', borderRadius: '9999px' }}>
                   Target FY: {getFyDisplayLabel(fiscalYear)}
                 </span>
               </div>
@@ -1219,11 +1219,11 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Current Qualified Savings</span>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#009AAD' }}>{formatCurrency(realizedSavings)}</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#16A34A' }}>{formatCurrency(realizedSavings)}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Remaining Target Gap</span>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#E53935' }}>{formatCurrency(savingsGap)}</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#EF4444' }}>{formatCurrency(savingsGap)}</span>
                 </div>
               </div>
 
@@ -1232,7 +1232,7 @@ export const Dashboard: React.FC = () => {
                   style={{ 
                     width: `${realizedPercent}%`, 
                     height: '100%', 
-                    backgroundColor: '#009AAD', 
+                    backgroundColor: '#22C55E', 
                     transition: 'width 0.5s ease-in-out' 
                   }} 
                   title={`Realized Savings: ${realizedPercent.toFixed(1)}%`}
@@ -1241,7 +1241,7 @@ export const Dashboard: React.FC = () => {
                   style={{ 
                     width: `${potentialPercent}%`, 
                     height: '100%', 
-                    backgroundColor: '#4FC3D7', 
+                    backgroundColor: '#FACC15', 
                     transition: 'width 0.5s ease-in-out' 
                   }} 
                   title={`Potential Savings: ${potentialPercent.toFixed(1)}%`}
@@ -1251,9 +1251,9 @@ export const Dashboard: React.FC = () => {
                     style={{ 
                       flexGrow: 1, 
                       height: '100%', 
-                      backgroundColor: '#FFEBEE', 
-                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, #FFCDD2 10px, #FFCDD2 20px)',
-                      opacity: 0.8
+                      backgroundColor: '#FECACA', 
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, #EF4444 10px, #EF4444 20px)',
+                      opacity: 0.08
                     }} 
                     title={`Target Deficit Gap: ${formatCurrency(savingsGap)}`}
                   />
@@ -1269,25 +1269,25 @@ export const Dashboard: React.FC = () => {
 
             {/* SUMMARY ROW: FOUR EXECUTIVE CARDS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #006B78', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #22C55E', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closed Projects</span>
                 <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{approvedCount}</span>
-                <span style={{ fontSize: '0.7rem', color: '#006B78', fontWeight: 600 }}>Approved and realized impact</span>
+                <span style={{ fontSize: '0.7rem', color: '#16A34A', fontWeight: 600 }}>Approved and realized impact</span>
               </div>
-              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #4FC3D7', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #FACC15', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Projects</span>
                 <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{openCount}</span>
-                <span style={{ fontSize: '0.7rem', color: '#4FC3D7', fontWeight: 600 }}>Active open pipeline</span>
+                <span style={{ fontSize: '0.7rem', color: '#FACC15', fontWeight: 600 }}>Active open pipeline</span>
               </div>
-              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #009AAD', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #16A34A', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Savings</span>
-                <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
-                <span style={{ fontSize: '0.7rem', color: '#009AAD', fontWeight: 600 }}>Target-Qualifying (OP + One-Time)</span>
+                <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#16A34A', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
+                <span style={{ fontSize: '0.7rem', color: '#16A34A', fontWeight: 600 }}>Target-Qualifying (OP + One-Time)</span>
               </div>
-              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #E53935', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '4px solid #EF4444', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gap</span>
-                <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#E53935', lineHeight: 1 }}>{formatCurrency(Math.max(0, annualTarget - realizedSavings))}</span>
-                <span style={{ fontSize: '0.7rem', color: '#E53935', fontWeight: 600 }}>Remaining deficit to milestone goal</span>
+                <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#EF4444', lineHeight: 1 }}>{formatCurrency(Math.max(0, annualTarget - realizedSavings))}</span>
+                <span style={{ fontSize: '0.7rem', color: '#EF4444', fontWeight: 600 }}>Remaining deficit to milestone goal</span>
               </div>
             </div>
           </>

@@ -412,17 +412,17 @@ export const Projects: React.FC = () => {
   };
 
   const quarterColStyle = { 
-    backgroundColor: '#F0F9FF', 
+    backgroundColor: '#F1F5F9', 
     fontWeight: 700, 
     textAlign: 'right' as const, 
-    color: '#0369A1' 
+    color: '#374151' 
   };
   
   const fyColStyle = { 
-    backgroundColor: '#DFF7FA', 
+    backgroundColor: '#86EFAC', 
     fontWeight: 800, 
     textAlign: 'right' as const, 
-    color: '#006B78' 
+    color: '#16A34A' 
   };
 
   // Render Table Element
@@ -817,7 +817,7 @@ export const Projects: React.FC = () => {
                     <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1F2937' }}>
                       Target-Qualifying Savings (OP + One-Time):
                     </span>
-                    <span className="detail-value savings" style={{ fontSize: '1.1rem', color: '#006B78' }}>
+                    <span className="detail-value savings" style={{ fontSize: '1.1rem', color: '#16A34A' }}>
                       {formatCurrency(getProjectPeriodSavings(selectedProject, 11))}
                     </span>
                   </div>
@@ -838,7 +838,7 @@ export const Projects: React.FC = () => {
 
               {/* FTE Headcount Savings */}
               <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', display: 'flex', gap: '12px' }}>
-                <div className="kpi-icon-container" style={{ backgroundColor: '#E0F2FE', color: '#0284C7', minWidth: '40px', height: '40px' }}>
+                <div className="kpi-icon-container" style={{ backgroundColor: '#E5E7EB', color: '#374151', minWidth: '40px', height: '40px' }}>
                   <User size={18} />
                 </div>
                 <div>

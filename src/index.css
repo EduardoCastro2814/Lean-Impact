@@ -8,11 +8,11 @@
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   
   /* Core Colors */
-  --color-primary: #009AAD;
-  --color-primary-light: #DFF7FA;
-  --color-primary-dark: #006B78;
+  --color-primary: #22C55E;
+  --color-primary-light: #86EFAC;
+  --color-primary-dark: #16A34A;
   
-  --color-bg-main: #F3F4F6;
+  --color-bg-main: #F8FAFC;
   --color-bg-card: #FFFFFF;
   --color-bg-hover: #F9FAFB;
   
@@ -21,13 +21,13 @@
   --color-text-light: #9CA3AF;
   
   --color-border: #E5E7EB;
-  --color-border-focus: #009AAD;
+  --color-border-focus: #22C55E;
   
   /* Status Colors */
-  --color-success: #009AAD;
-  --color-warning: #F59E0B;
+  --color-success: #22C55E;
+  --color-warning: #FACC15;
   --color-danger: #EF4444;
-  --color-info: #3B82F6;
+  --color-info: #374151;
   
   /* Layout Metrics */
   --sidebar-width: 260px;
@@ -480,7 +480,7 @@ body {
 
 .gauge-bar-realized {
   height: 100%;
-  background: linear-gradient(90deg, #10B981, #22C55E);
+  background: linear-gradient(90deg, #16A34A, #22C55E);
   position: relative;
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -495,16 +495,16 @@ body {
 
 .gauge-bar-potential {
   height: 100%;
-  background: linear-gradient(90deg, #A7F3D0, #86EFAC);
+  background: linear-gradient(90deg, #FEF08A, #FACC15);
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  color: #065F46;
+  color: #374151;
   font-weight: 700;
   font-size: 0.85rem;
   padding-right: 12px;
-  border-left: 1px dashed rgba(16, 185, 129, 0.4);
+  border-left: 1px dashed rgba(250, 204, 21, 0.4);
 }
 
 .progress-gauge-markers {
@@ -672,8 +672,8 @@ body {
 }
 
 .badge-green {
-  background-color: #DCFCE7;
-  color: #15803D;
+  background-color: #86EFAC;
+  color: #16A34A;
 }
 
 .badge-gray {
@@ -682,13 +682,13 @@ body {
 }
 
 .badge-yellow {
-  background-color: #FEF3C7;
-  color: #92400E;
+  background-color: #FEF08A;
+  color: #374151;
 }
 
-.badge-blue {
-  background-color: #DBEAFE;
-  color: #1E40AF;
+.badge-red {
+  background-color: #FECACA;
+  color: #EF4444;
 }
 
 /* ==============================================================================

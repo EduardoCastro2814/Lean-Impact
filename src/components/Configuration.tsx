@@ -742,7 +742,7 @@ export const Configuration: React.FC = () => {
                           {!fy.active && (
                             <button 
                               onClick={() => handleSetActiveFiscalYear(fy.id)} 
-                              style={{ border: 'none', background: 'none', color: '#3B82F6', cursor: 'pointer', fontSize: '0.8rem' }}
+                              style={{ border: 'none', background: 'none', color: '#16A34A', cursor: 'pointer', fontSize: '0.8rem' }}
                             >
                               Set Active
                             </button>
@@ -1133,7 +1133,7 @@ export const Configuration: React.FC = () => {
           <div className="card">
             <div className="card-header-row" style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '16px' }}>
               <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileSpreadsheet size={20} style={{ color: '#3B82F6' }} />
+                <FileSpreadsheet size={20} style={{ color: '#FACC15' }} />
                 Import Open Projects
               </span>
             </div>
@@ -1172,7 +1172,7 @@ export const Configuration: React.FC = () => {
             </div>
 
             <label className="import-upload-zone" style={{ borderStyle: 'dashed', opacity: !importFiscalYear ? 0.6 : 1, cursor: !importFiscalYear ? 'not-allowed' : 'pointer' }}>
-              <Upload style={{ color: '#3B82F6' }} size={32} />
+              <Upload style={{ color: '#FACC15' }} size={32} />
               <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1F2937' }}>
                 {importLoading === 'open' ? 'Analyzing file structure...' : !importFiscalYear ? '⚠️ Please select a Target Import FY first' : 'Click to select or drag Excel file'}
               </span>
