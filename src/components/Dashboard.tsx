@@ -666,8 +666,8 @@ export const Dashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
               <ComposedChart data={cumulativeQuarterTrendData} margin={{ top: 30, right: 25, left: 15, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} />
-                <YAxis stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                <XAxis dataKey="name" stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} />
+                <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.20} activeDot={false} legendType="none" />
@@ -717,8 +717,8 @@ export const Dashboard: React.FC = () => {
               {isPresentation ? (
                 <BarChart data={quarterlySavingsDataForChart} margin={{ top: 25, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" stroke="#6B7280" fontSize={14} tickLine={false} />
-                  <YAxis stroke="#6B7280" fontSize={14} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                  <XAxis dataKey="name" stroke="#111827" fontSize={16} fontWeight={700} tickLine={false} />
+                  <YAxis stroke="#111827" fontSize={16} fontWeight={700} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                   <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Legend />
                   <Bar dataKey="Target" fill="#374151" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#111827', fontSize: 12, fontWeight: 700 }} />
@@ -776,8 +776,8 @@ export const Dashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
               <BarChart data={realizedByTypeData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} />
-                <YAxis stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                <XAxis dataKey="name" stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} />
+                <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 {isPresentation && <Legend />}
                 <Bar dataKey="OP Contribution" name="OP Contribution" stackId="a" fill="#009AAD" />
@@ -825,16 +825,16 @@ export const Dashboard: React.FC = () => {
           </div>
           <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
             <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-              <PieChart margin={isPresentation ? { top: 20, right: 30, bottom: 20, left: 30 } : { top: 10, right: 20, bottom: 10, left: 20 }}>
+              <PieChart margin={isPresentation ? { top: 0, right: 0, bottom: 0, left: 0 } : { top: 10, right: 20, bottom: 10, left: 20 }}>
                 <Pie
                   data={donutData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={isPresentation ? 85 : 55}
-                  outerRadius={isPresentation ? 125 : 85}
+                  innerRadius={isPresentation ? 95 : 55}
+                  outerRadius={isPresentation ? 140 : 85}
                   paddingAngle={3}
                   dataKey="value"
-                  label={renderPieLabel}
+                  label={isPresentation ? false : renderPieLabel}
                 >
                   {donutData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -846,12 +846,31 @@ export const Dashboard: React.FC = () => {
                   textAnchor="middle"
                   dominantBaseline="middle"
                 >
-                  <tspan x="50%" dy={isPresentation ? "-10" : "-6"} fontSize={isPresentation ? "3.2rem" : "2.2rem"} fontWeight="800" fill="#111827">
-                    {totalProjects}
-                  </tspan>
-                  <tspan x="50%" dy={isPresentation ? "34" : "24"} fontSize={isPresentation ? "1.2rem" : "0.85rem"} fontWeight="600" fill="#6B7280">
-                    Total Projects
-                  </tspan>
+                  {isPresentation ? (
+                    <>
+                      <tspan x="50%" dy="-35" fontSize="3.8rem" fontWeight="800" fill="#111827">
+                        {totalProjects}
+                      </tspan>
+                      <tspan x="50%" dy="32" fontSize="1.25rem" fontWeight="700" fill="#6B7280" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Total Projects
+                      </tspan>
+                      <tspan x="50%" dy="26" fontSize="1.35rem" fontWeight="700" fill="#009AAD">
+                        Closed: {approvedCount} ({totalProjects > 0 ? Math.round((approvedCount / totalProjects) * 100) : 0}%)
+                      </tspan>
+                      <tspan x="50%" dy="22" fontSize="1.35rem" fontWeight="700" fill="#4FC3D7">
+                        Open: {openCount} ({totalProjects > 0 ? Math.round((openCount / totalProjects) * 100) : 0}%)
+                      </tspan>
+                    </>
+                  ) : (
+                    <>
+                      <tspan x="50%" dy="-6" fontSize="2.2rem" fontWeight="800" fill="#111827">
+                        {totalProjects}
+                      </tspan>
+                      <tspan x="50%" dy="24" fontSize="0.85rem" fontWeight="600" fill="#6B7280">
+                        Total Projects
+                      </tspan>
+                    </>
+                  )}
                 </text>
                 <Tooltip content={<CustomDonutTooltip />} />
                 {isPresentation && <Legend verticalAlign="bottom" height={36} iconType="circle" />}
@@ -948,13 +967,13 @@ export const Dashboard: React.FC = () => {
           width: '100vw',
           height: '100vh',
           backgroundColor: '#F9FAFB',
-          padding: '24px',
+          padding: '16px',
           boxSizing: 'border-box',
           overflow: 'hidden',
           zIndex: 99999,
           display: 'flex',
           flexDirection: 'column',
-          gap: '24px'
+          gap: '16px'
         } : {
           display: 'flex',
           flexDirection: 'column',
@@ -965,13 +984,13 @@ export const Dashboard: React.FC = () => {
           /* PRESENTATION MODE HEADER AND TOP KPI ROW */
           <>
             {/* Header row in presentation mode */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <img src={flexLogo} alt="Flex Logo" style={{ height: '32px', width: 'auto', objectFit: 'contain' }} />
-                <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#111827', margin: 0 }}>Lean Savings Dashboard</h1>
+                <img src={flexLogo} alt="Flex Logo" style={{ height: '24px', width: 'auto', objectFit: 'contain' }} />
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: 0 }}>Lean Savings Dashboard</h1>
               </div>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, padding: '6px 16px', backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary-dark)', borderRadius: '9999px' }}>
+                <span style={{ fontSize: '1rem', fontWeight: 700, padding: '4px 12px', backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary-dark)', borderRadius: '9999px' }}>
                   Active FY: {getFyDisplayLabel(fiscalYear)} {quarter !== 'All' ? `- ${quarter}` : ''}
                 </span>
               </div>
@@ -981,33 +1000,33 @@ export const Dashboard: React.FC = () => {
               style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(4, 1fr)', 
-                gap: '24px', 
+                gap: '16px', 
                 width: '100%',
-                marginBottom: '4px'
+                marginBottom: '2px'
               }}
             >
               {/* Target Card */}
-              <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Target</span>
-                <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#374151', lineHeight: 1.1 }}>{formatCurrency(annualTarget)}</span>
+              <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.05em' }}>Target</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#374151', lineHeight: 1 }}>{formatCurrency(annualTarget)}</span>
               </div>
 
               {/* Current Savings Card */}
-              <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Current Savings</span>
-                <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1.1 }}>{formatCurrency(realizedSavings)}</span>
+              <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.05em' }}>Current Savings</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
               </div>
 
               {/* Target Achievement Card */}
-              <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Achievement</span>
-                <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1.1 }}>{targetAchievementPercent.toFixed(1)}%</span>
+              <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.05em' }}>Achievement</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{targetAchievementPercent.toFixed(1)}%</span>
               </div>
 
               {/* Gap Card */}
-              <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Gap</span>
-                <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#E53935', lineHeight: 1.1 }}>{formatCurrency(savingsGap)}</span>
+              <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.05em' }}>Gap</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#E53935', lineHeight: 1 }}>{formatCurrency(savingsGap)}</span>
               </div>
             </div>
           </>
@@ -1106,39 +1125,40 @@ export const Dashboard: React.FC = () => {
           </>
         )}
 
-        {/* MAIN ANALYTICS GRID: 2x2 CHART TILES */}
-        <div 
-          className="dashboard-grid-2x2" 
-          style={isPresentation ? {
-            flex: 1,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gridTemplateRows: '1.35fr 0.65fr',
-            gap: '24px',
-            overflow: 'hidden',
-            minHeight: 0
-          } : {
-            display: 'grid',
-            gap: '24px',
-            marginTop: '20px'
-          }}
-        >
-          {isPresentation ? (
-            <>
+        {/* MAIN ANALYTICS GRID */}
+        {isPresentation ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minHeight: 0 }}>
+            {/* Row 1: Target vs Actual Savings Trend - Full Width */}
+            <div style={{ height: '35vh', minHeight: 0 }}>
               {renderChartCard('trend')}
-              {renderChartCard('quarter')}
-              {renderChartCard('monthly')}
-              {renderChartCard('projectStatus')}
-            </>
-          ) : (
-            <>
-              {renderChartCard('trend')}
-              {renderChartCard('monthly')}
+            </div>
+            
+            {/* Row 2: Left: Quarter Performance, Right: Project Status Overview - Equal Size */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', height: '27vh', minHeight: 0 }}>
               {renderChartCard('quarter')}
               {renderChartCard('projectStatus')}
-            </>
-          )}
-        </div>
+            </div>
+            
+            {/* Row 3: Monthly Savings Breakdown - Full Width */}
+            <div style={{ height: '20vh', minHeight: 0 }}>
+              {renderChartCard('monthly')}
+            </div>
+          </div>
+        ) : (
+          <div 
+            className="dashboard-grid-2x2" 
+            style={{
+              display: 'grid',
+              gap: '24px',
+              marginTop: '20px'
+            }}
+          >
+            {renderChartCard('trend')}
+            {renderChartCard('monthly')}
+            {renderChartCard('quarter')}
+            {renderChartCard('projectStatus')}
+          </div>
+        )}
 
       </div>
 
