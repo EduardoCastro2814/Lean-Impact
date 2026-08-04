@@ -25,7 +25,7 @@
   
   /* Status Colors */
   --color-success: #22C55E;
-  --color-warning: #FACC15;
+  --color-warning: #2563EB;
   --color-danger: #EF4444;
   --color-info: #374151;
   
@@ -689,6 +689,11 @@ body {
 .badge-red {
   background-color: #FECACA;
   color: #EF4444;
+}
+
+.badge-blue {
+  background-color: #DBEAFE;
+  color: #2563EB;
 }
 
 /* ==============================================================================
