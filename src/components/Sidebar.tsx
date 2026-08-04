@@ -43,12 +43,16 @@ export const Sidebar: React.FC = () => {
         </ul>
       </nav>
 
-      <div className="sidebar-branding" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'center', alignItems: 'center', borderTop: '1px solid var(--color-border)' }}>
+      <div className="sidebar-branding" style={{ padding: '12px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderTop: '1px solid var(--color-border)' }}>
         <img 
           src={flexLogo} 
           alt="Flex Logo" 
           className="sidebar-flex-logo"
+          style={{ maxHeight: '28px', objectFit: 'contain', width: 'auto' }}
         />
+        <span style={{ fontSize: '0.68rem', color: 'var(--color-primary-dark)', fontWeight: 700, marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8 }}>
+          Live Smarter
+        </span>
       </div>
 
       <div className="sidebar-footer" style={{ borderTop: '1px solid var(--color-border)', padding: '16px', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>

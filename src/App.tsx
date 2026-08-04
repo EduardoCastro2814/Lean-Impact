@@ -59,7 +59,7 @@ export const App: React.FC = () => {
   const getBreadcrumbs = (pathname: string) => {
     switch (pathname) {
       case '/':
-        return 'Lean Impact / Dashboard';
+        return 'Lean Savings Dashboard';
       case '/projects':
         return 'Lean Impact / Projects';
       case '/facilitators':

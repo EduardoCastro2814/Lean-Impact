@@ -35,7 +35,7 @@ const formatCurrency = (val: number) => {
 const formatShortCurrency = (val: number) => {
   const absVal = Math.abs(val);
   if (absVal >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
-  if (absVal >= 1000) return `$${(val / 1000).toFixed(0)}k`;
+  if (absVal >= 1000) return `$${(val / 1000).toFixed(1)}K`;
   return `$${val}`;
 };
 
@@ -190,6 +190,48 @@ export const Dashboard: React.FC = () => {
       );
     }
     return null;
+  };
+
+  const CustomActualLabel = (props: any) => {
+    const { x, y, index } = props;
+    if (index === undefined || index === null) return null;
+    const row = cumulativeQuarterTrendData[index];
+    if (!row) return null;
+    const actualVal = row['Actual Savings'];
+    const formattedVal = formatShortCurrency(actualVal);
+    return (
+      <text
+        x={x}
+        y={y - 12}
+        fill="#111827"
+        fontSize={isPresentation ? 14 : 11}
+        fontWeight="800"
+        textAnchor="middle"
+      >
+        {formattedVal}
+      </text>
+    );
+  };
+
+  const renderStackedBarLabel = (props: any) => {
+    const { x, y, width, index } = props;
+    if (index === undefined || index === null) return null;
+    const row = realizedByTypeData[index];
+    if (!row) return null;
+    const total = row['OP Contribution'] + row['One Time Savings'];
+    if (total === 0) return null;
+    return (
+      <text
+        x={x + width / 2}
+        y={y - 8}
+        fill="#111827"
+        fontSize={isPresentation ? 13 : 10}
+        fontWeight="700"
+        textAnchor="middle"
+      >
+        {formatShortCurrency(total)}
+      </text>
+    );
   };
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
   const [chartRenderKey, setChartRenderKey] = useState(0);
@@ -981,55 +1023,40 @@ export const Dashboard: React.FC = () => {
         }}
       >
         {isPresentation ? (
-          /* PRESENTATION MODE HEADER AND TOP KPI ROW */
-          <>
-            {/* Header row in presentation mode */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', marginBottom: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <img src={flexLogo} alt="Flex Logo" style={{ height: '24px', width: 'auto', objectFit: 'contain' }} />
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: 0 }}>Lean Savings Dashboard</h1>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <span style={{ fontSize: '1rem', fontWeight: 700, padding: '4px 12px', backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary-dark)', borderRadius: '9999px' }}>
-                  Active FY: {getFyDisplayLabel(fiscalYear)} {quarter !== 'All' ? `- ${quarter}` : ''}
-                </span>
-              </div>
+          /* PRESENTATION MODE: KPI CARDS ONLY */
+          <div 
+            style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(4, 1fr)', 
+              gap: '16px', 
+              width: '100%',
+              marginBottom: '4px'
+            }}
+          >
+            {/* Target Card */}
+            <div className="card" style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>Target</span>
+              <span style={{ fontSize: '3.8rem', fontWeight: 800, color: '#374151', lineHeight: 1 }}>{formatCurrency(annualTarget)}</span>
             </div>
 
-            <div 
-              style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(4, 1fr)', 
-                gap: '16px', 
-                width: '100%',
-                marginBottom: '2px'
-              }}
-            >
-              {/* Target Card */}
-              <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.05em' }}>Target</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#374151', lineHeight: 1 }}>{formatCurrency(annualTarget)}</span>
-              </div>
-
-              {/* Current Savings Card */}
-              <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.05em' }}>Current Savings</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
-              </div>
-
-              {/* Target Achievement Card */}
-              <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.05em' }}>Achievement</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{targetAchievementPercent.toFixed(1)}%</span>
-              </div>
-
-              {/* Gap Card */}
-              <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '12px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.05em' }}>Gap</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#E53935', lineHeight: 1 }}>{formatCurrency(savingsGap)}</span>
-              </div>
+            {/* Current Savings Card */}
+            <div className="card" style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>Current Savings</span>
+              <span style={{ fontSize: '3.8rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{formatCurrency(realizedSavings)}</span>
             </div>
-          </>
+
+            {/* Target Achievement Card */}
+            <div className="card" style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>Achievement</span>
+              <span style={{ fontSize: '3.8rem', fontWeight: 800, color: '#009AAD', lineHeight: 1 }}>{targetAchievementPercent.toFixed(1)}%</span>
+            </div>
+
+            {/* Gap Card */}
+            <div className="card" style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>Gap</span>
+              <span style={{ fontSize: '3.8rem', fontWeight: 800, color: '#E53935', lineHeight: 1 }}>{formatCurrency(savingsGap)}</span>
+            </div>
+          </div>
         ) : (
           /* STANDARD MODE TOP SECTION: EXECUTIVE PROGRESS BAR & SUMMARY ROW */
           <>
