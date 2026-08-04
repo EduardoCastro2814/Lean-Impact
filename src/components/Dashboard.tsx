@@ -242,11 +242,7 @@ export const Dashboard: React.FC = () => {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ display: 'inline-block', width: isPresentation ? '14px' : '10px', height: isPresentation ? '14px' : '10px', backgroundColor: '#22C55E', borderRadius: '2px' }} />
-          <span style={{ color: '#4B5563' }}>Actual (Met / Exceeded)</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ display: 'inline-block', width: isPresentation ? '14px' : '10px', height: isPresentation ? '14px' : '10px', backgroundColor: '#EF4444', borderRadius: '2px' }} />
-          <span style={{ color: '#4B5563' }}>Actual (Behind Target)</span>
+          <span style={{ color: '#4B5563' }}>Actual Savings</span>
         </div>
       </div>
     );
