@@ -44,7 +44,7 @@ export const App: React.FC = () => {
   const getPageTitle = (pathname: string) => {
     switch (pathname) {
       case '/':
-        return 'Executive Dashboard';
+        return 'Lean Savings Dashboard';
       case '/projects':
         return 'Project Savings Tracker';
       case '/facilitators':

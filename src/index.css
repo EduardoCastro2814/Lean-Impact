@@ -1078,3 +1078,19 @@ body {
 .top-scrollbar-container::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+
+/* Sidebar flex logo styling */
+.sidebar-flex-logo {
+  width: 150px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  background-color: transparent;
+  padding: 4px;
+  transition: all 0.3s ease;
+}
+
+/* Compact logo styling when sidebar is collapsed */
+.sidebar.collapsed .sidebar-flex-logo {
+  width: 40px;
+}

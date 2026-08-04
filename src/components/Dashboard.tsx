@@ -6,8 +6,9 @@ import {
 import { 
   BarChart, 
   Bar, 
-  LineChart,
-  Line,
+  ComposedChart,
+  Area,
+  Line, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -18,6 +19,7 @@ import {
 import html2canvas from 'html2canvas';
 import { dbService, getFyDisplayLabel, getFiscalMonthIndex, getProjectPeriodSavings } from '../lib/supabaseClient';
 import type { ProjectApproved, ProjectOpen, SavingsTarget } from '../lib/supabaseClient';
+import flexLogo from '../assets/flex_logo.png';
 
 const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -34,6 +36,33 @@ const formatShortCurrency = (val: number) => {
   return `$${val}`;
 };
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const actualEntry = payload.find((p: any) => p.dataKey === 'Actual Savings');
+    const targetEntry = payload.find((p: any) => p.dataKey === 'Target Savings');
+    
+    const actual = actualEntry ? actualEntry.value : 0;
+    const target = targetEntry ? targetEntry.value : 0;
+    const gap = target - actual;
+    
+    return (
+      <div style={{ backgroundColor: '#FFFFFF', padding: '12px 16px', border: '1px solid #E5E7EB', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+        <p style={{ fontWeight: 800, color: '#111827', margin: '0 0 8px 0', fontSize: '0.9rem' }}>{label}</p>
+        <p style={{ margin: '4px 0', fontSize: '0.85rem', color: '#374151', fontWeight: 600 }}>
+          Target: <span style={{ float: 'right', marginLeft: '12px', fontWeight: 700 }}>{formatCurrency(target)}</span>
+        </p>
+        <p style={{ margin: '4px 0', fontSize: '0.85rem', color: '#009AAD', fontWeight: 600 }}>
+          Actual: <span style={{ float: 'right', marginLeft: '12px', fontWeight: 700 }}>{formatCurrency(actual)}</span>
+        </p>
+        <p style={{ margin: '4px 0', fontSize: '0.85rem', color: gap > 0 ? '#E53935' : '#16A34A', fontWeight: 700 }}>
+          {gap >= 0 ? 'Gap to Target:' : 'Surplus to Target:'} <span style={{ float: 'right', marginLeft: '12px', fontWeight: 800 }}>{formatCurrency(Math.abs(gap))}</span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export const Dashboard: React.FC = () => {
   const [fiscalYear, setFiscalYear] = useState<string>('FY26');
   const [quarter, setQuarter] = useState<string>('All');
@@ -43,6 +72,43 @@ export const Dashboard: React.FC = () => {
   const [fiscalYears, setFiscalYears] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPresentation, setIsPresentation] = useState(false);
+
+  const CustomLabel = (props: any) => {
+    const { x, y, index } = props;
+    if (index === undefined || index === null) return null;
+    const row = cumulativeQuarterTrendData[index];
+    if (!row) return null;
+    
+    const targetVal = row['Target Savings'];
+    const actualVal = row['Actual Savings'];
+    const gapVal = actualVal - targetVal;
+    
+    const formatShortK = (v: number) => {
+      const absV = Math.abs(v);
+      if (absV >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+      if (absV >= 1000) return `${(v / 1000).toFixed(1)}K`;
+      return `${v}`;
+    };
+    
+    const targetStr = formatShortK(targetVal);
+    const actualStr = formatShortK(actualVal);
+    const gapStr = (gapVal >= 0 ? '+' : '') + formatShortK(gapVal);
+    
+    return (
+      <g transform={`translate(${x}, ${y - 30})`}>
+        <rect x="-42" y="-38" width="84" height="48" fill="#FFFFFF" stroke="#E5E7EB" strokeWidth="1" rx="4" filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.06))" />
+        <text x="0" y="-26" textAnchor="middle" fontSize="9" fontWeight="700" fill="#374151">
+          T: {targetStr}
+        </text>
+        <text x="0" y="-14" textAnchor="middle" fontSize="9" fontWeight="700" fill="#009AAD">
+          A: {actualStr}
+        </text>
+        <text x="0" y="-2" textAnchor="middle" fontSize="10" fontWeight="800" fill={gapVal >= 0 ? '#16A34A' : '#E53935'}>
+          G: {gapStr}
+        </text>
+      </g>
+    );
+  };
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
   const [chartRenderKey, setChartRenderKey] = useState(0);
 
@@ -245,12 +311,16 @@ export const Dashboard: React.FC = () => {
     const targetVal = getTargetForPeriod(targets, fiscalYear, q);
     
     let actualVal = approvedFiltered.reduce((sum, p) => sum + getProjectPeriodSavings(p, monthIdx), 0);
+    const targetRound = Math.round(targetVal);
+    const actualRound = Math.round(actualVal);
 
     return {
       name: q,
-      'Target Savings': Math.round(targetVal),
-      'Actual Savings': Math.round(actualVal),
-      'Variance': Math.round(actualVal - targetVal)
+      'Target Savings': targetRound,
+      'Actual Savings': actualRound,
+      'Variance': actualRound - targetRound,
+      'rangeRed': actualRound < targetRound ? [actualRound, targetRound] : null,
+      'rangeGreen': actualRound > targetRound ? [targetRound, actualRound] : null
     };
   });
 
@@ -310,17 +380,24 @@ export const Dashboard: React.FC = () => {
       chartTitle = 'Target vs Actual Savings Trend (Cumulative)';
       chartComponent = (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <ResponsiveContainer width="100%" height={380}>
-            <LineChart data={cumulativeQuarterTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis tickFormatter={formatCurrency} />
-              <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-              <Legend />
-              <Line type="monotone" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
-              <Line type="monotone" dataKey="Target Savings" stroke="#374151" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div id="chart-export-target-trend" style={{ padding: '16px 24px', backgroundColor: '#FFFFFF' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginBottom: '16px', textAlign: 'center' }}>
+              Target vs Actual Savings Trend (Cumulative)
+            </h3>
+            <ResponsiveContainer width="100%" height={380}>
+              <ComposedChart data={cumulativeQuarterTrendData} margin={{ top: 30, right: 25, left: 15, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" stroke="#6B7280" fontSize={11} tickLine={false} />
+                <YAxis stroke="#6B7280" fontSize={11} tickLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.20} activeDot={false} legendType="none" />
+                <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.20} activeDot={false} legendType="none" />
+                <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={4} label={<CustomLabel />} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+                <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={4} strokeDasharray="5 5" dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
           
           <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
@@ -433,7 +510,7 @@ export const Dashboard: React.FC = () => {
             <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: 0 }}>{chartTitle}</h3>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button 
-                onClick={() => exportChart(`expanded-chart-render-${expandedChart}`, `Lean_Impact_Expanded_${expandedChart}`)}
+                onClick={() => exportChart(expandedChart === 'trend' ? 'chart-export-target-trend' : `expanded-chart-render-${expandedChart}`, `Lean_Savings_Dashboard_${expandedChart}_Chart`)}
                 className="btn-export btn-export-primary"
                 style={{ padding: '6px 12px' }}
               >
@@ -493,15 +570,17 @@ export const Dashboard: React.FC = () => {
           </div>
           <div style={isPresentation ? { flex: 1, width: '100%', minHeight: 0 } : { flex: 1, width: '100%', height: '350px', minHeight: '350px' }}>
             <ResponsiveContainer width="100%" height="100%" key={chartRenderKey}>
-              <LineChart data={cumulativeQuarterTrendData} margin={{ top: 10, right: 15, left: 15, bottom: 5 }}>
+              <ComposedChart data={cumulativeQuarterTrendData} margin={{ top: 30, right: 25, left: 15, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} />
                 <YAxis stroke="#6B7280" fontSize={isPresentation ? 14 : 11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={isPresentation ? 4 : 3} dot={{ r: isPresentation ? 6 : 4 }} activeDot={{ r: isPresentation ? 8 : 6 }} />
-                <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={isPresentation ? 4 : 2} strokeDasharray="5 5" dot={false} />
-              </LineChart>
+                <Area dataKey="rangeRed" stroke="none" fill="#E53935" fillOpacity={0.20} activeDot={false} legendType="none" />
+                <Area dataKey="rangeGreen" stroke="none" fill="#16A34A" fillOpacity={0.20} activeDot={false} legendType="none" />
+                <Line type="monotone" name="Actual" dataKey="Actual Savings" stroke="#009AAD" strokeWidth={4} label={<CustomLabel />} dot={{ r: isPresentation ? 6 : 4 }} activeDot={{ r: isPresentation ? 8 : 6 }} />
+                <Line type="monotone" name="Target" dataKey="Target Savings" stroke="#374151" strokeWidth={4} strokeDasharray="5 5" dot={false} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -766,40 +845,55 @@ export const Dashboard: React.FC = () => {
         }}
       >
         {isPresentation ? (
-          /* TOP SECTION IN PRESENTATION MODE: Single Executive Row with 4 Large KPIs */
-          <div 
-            style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(4, 1fr)', 
-              gap: '24px', 
-              width: '100%',
-              marginBottom: '4px'
-            }}
-          >
-            {/* Target Card */}
-            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Target</span>
-              <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#374151', lineHeight: 1.1 }}>{formatCurrency(annualTarget)}</span>
+          /* PRESENTATION MODE HEADER AND TOP KPI ROW */
+          <>
+            {/* Header row in presentation mode */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <img src={flexLogo} alt="Flex Logo" style={{ height: '32px', width: 'auto', objectFit: 'contain' }} />
+                <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#111827', margin: 0 }}>Lean Savings Dashboard</h1>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, padding: '6px 16px', backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary-dark)', borderRadius: '9999px' }}>
+                  Active FY: {getFyDisplayLabel(fiscalYear)} {quarter !== 'All' ? `- ${quarter}` : ''}
+                </span>
+              </div>
             </div>
 
-            {/* Current Savings Card */}
-            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Current Savings</span>
-              <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1.1 }}>{formatCurrency(realizedSavings)}</span>
-            </div>
+            <div 
+              style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(4, 1fr)', 
+                gap: '24px', 
+                width: '100%',
+                marginBottom: '4px'
+              }}
+            >
+              {/* Target Card */}
+              <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Target</span>
+                <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#374151', lineHeight: 1.1 }}>{formatCurrency(annualTarget)}</span>
+              </div>
 
-            {/* Target Achievement Card */}
-            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Achievement</span>
-              <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1.1 }}>{targetAchievementPercent.toFixed(1)}%</span>
-            </div>
+              {/* Current Savings Card */}
+              <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Current Savings</span>
+                <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1.1 }}>{formatCurrency(realizedSavings)}</span>
+              </div>
 
-            {/* Gap Card */}
-            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Gap</span>
-              <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#E53935', lineHeight: 1.1 }}>{formatCurrency(savingsGap)}</span>
+              {/* Target Achievement Card */}
+              <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Achievement</span>
+                <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#009AAD', lineHeight: 1.1 }}>{targetAchievementPercent.toFixed(1)}%</span>
+              </div>
+
+              {/* Gap Card */}
+              <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderRadius: '16px' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>Gap</span>
+                <span style={{ fontSize: '3.5rem', fontWeight: 800, color: '#E53935', lineHeight: 1.1 }}>{formatCurrency(savingsGap)}</span>
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           /* STANDARD MODE TOP SECTION: EXECUTIVE PROGRESS BAR & SUMMARY ROW */
           <>

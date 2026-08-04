@@ -7,6 +7,7 @@ import {
   Settings 
 } from 'lucide-react';
 import logo from '../assets/logo.png';
+import flexLogo from '../assets/flex_logo.png';
 
 export const Sidebar: React.FC = () => {
   const menuItems = [
@@ -41,6 +42,14 @@ export const Sidebar: React.FC = () => {
           ))}
         </ul>
       </nav>
+
+      <div className="sidebar-branding" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'center', alignItems: 'center', borderTop: '1px solid var(--color-border)' }}>
+        <img 
+          src={flexLogo} 
+          alt="Flex Logo" 
+          className="sidebar-flex-logo"
+        />
+      </div>
 
       <div className="sidebar-footer" style={{ borderTop: '1px solid var(--color-border)', padding: '16px', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
         Lean Impact v1.1.0
