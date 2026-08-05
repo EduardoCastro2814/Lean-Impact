@@ -41,12 +41,14 @@ const formatShortCurrency = (val: number) => {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const actualEntry = payload.find((p: any) => p.dataKey === 'Actual Savings');
-    const targetEntry = payload.find((p: any) => p.dataKey === 'Target Savings');
+    const actualEntry = payload.find((p: any) => p.name === 'Actual Savings' || p.dataKey === 'Actual Savings' || p.dataKey === 'Actual');
+    const targetEntry = payload.find((p: any) => p.name === 'Target Savings' || p.dataKey === 'Target Savings' || p.dataKey === 'Target');
     
     const actual = actualEntry ? actualEntry.value : 0;
     const target = targetEntry ? targetEntry.value : 0;
     const gap = target - actual;
+    const isMet = actual >= target;
+    const actualColor = isMet ? '#0284C7' : '#DC2626';
     
     return (
       <div style={{ backgroundColor: '#FFFFFF', padding: '12px 16px', border: '1px solid #E5E7EB', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
@@ -54,7 +56,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p style={{ margin: '4px 0', fontSize: '0.85rem', color: '#374151', fontWeight: 600 }}>
           Target: <span style={{ float: 'right', marginLeft: '12px', fontWeight: 700 }}>{formatCurrency(target)}</span>
         </p>
-        <p style={{ margin: '4px 0', fontSize: '0.85rem', color: '#0284C7', fontWeight: 600 }}>
+        <p style={{ margin: '4px 0', fontSize: '0.85rem', color: actualColor, fontWeight: 600 }}>
           Actual: <span style={{ float: 'right', marginLeft: '12px', fontWeight: 700 }}>{formatCurrency(actual)}</span>
         </p>
         <p style={{ margin: '4px 0', fontSize: '0.85rem', color: gap > 0 ? '#DC2626' : '#0284C7', fontWeight: 700 }}>
@@ -234,6 +236,8 @@ export const Dashboard: React.FC = () => {
   };
 
   const renderQuarterLegend = () => {
+    const isQuarterMet = realizedSavings >= annualTarget;
+    const actualQuarterColor = isQuarterMet ? '#0284C7' : '#DC2626';
     return (
       <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', fontSize: isPresentation ? '0.95rem' : '0.8rem', fontWeight: 700, marginTop: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -241,7 +245,7 @@ export const Dashboard: React.FC = () => {
           <span style={{ color: '#4B5563' }}>Target Savings</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ display: 'inline-block', width: isPresentation ? '14px' : '10px', height: isPresentation ? '14px' : '10px', backgroundColor: '#0284C7', borderRadius: '2px' }} />
+          <span style={{ display: 'inline-block', width: isPresentation ? '14px' : '10px', height: isPresentation ? '14px' : '10px', backgroundColor: actualQuarterColor, borderRadius: '2px' }} />
           <span style={{ color: '#4B5563' }}>Actual Savings</span>
         </div>
       </div>
@@ -602,7 +606,7 @@ export const Dashboard: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" />
                 <YAxis tickFormatter={formatCurrency} />
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend content={renderQuarterLegend} />
                 <Bar dataKey="Target" name="Target Savings" fill="#475569" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontWeight: 700 }} />
                 <Bar dataKey="Actual" name="Actual Savings" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontWeight: 700 }}>
@@ -871,7 +875,7 @@ export const Dashboard: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} />
                   <YAxis stroke={isPresentation ? '#111827' : '#6B7280'} fontSize={isPresentation ? 16 : 11} fontWeight={isPresentation ? 700 : 500} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend content={renderQuarterLegend} />
                   <Bar dataKey="Target" name="Target Savings" fill="#475569" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }} />
                   <Bar dataKey="Actual" name="Actual Savings" label={{ position: 'top', formatter: (v: any) => formatShortCurrency(v), fill: '#374151', fontSize: isPresentation ? 14 : 11, fontWeight: 700 }}>
@@ -1231,7 +1235,7 @@ export const Dashboard: React.FC = () => {
                   {fiscalYear} Savings Performance
                 </h1>
                 <span style={{ fontSize: '14px', color: '#6B7280', marginTop: '2px', fontWeight: 500 }}>
-                  Lean Savings Dashboard
+                  Business Excellence Team
                 </span>
               </div>
             </div>
