@@ -733,7 +733,7 @@ export const Configuration: React.FC = () => {
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontWeight: 600 }}>{getFyDisplayLabel(fy.fiscal_year)}</span>
-                          {fy.active && <span style={{ fontSize: '0.7rem', color: '#15803D', backgroundColor: '#DCFCE7', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Active</span>}
+                          {fy.active && <span style={{ fontSize: '0.7rem', color: '#0369A1', backgroundColor: '#E0F2FE', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Active</span>}
                         </div>
                       )}
                       
@@ -742,7 +742,7 @@ export const Configuration: React.FC = () => {
                           {!fy.active && (
                             <button 
                               onClick={() => handleSetActiveFiscalYear(fy.id)} 
-                              style={{ border: 'none', background: 'none', color: '#16A34A', cursor: 'pointer', fontSize: '0.8rem' }}
+                              style={{ border: 'none', background: 'none', color: '#0284C7', cursor: 'pointer', fontSize: '0.8rem' }}
                             >
                               Set Active
                             </button>
@@ -775,7 +775,7 @@ export const Configuration: React.FC = () => {
               marginTop: '16px', 
               backgroundColor: fyMessage.type === 'success' ? '#DCFCE7' : '#FEE2E2',
               borderColor: fyMessage.type === 'success' ? '#A7F3D0' : '#FCA5A5',
-              color: fyMessage.type === 'success' ? '#15803D' : '#EF4444'
+              color: fyMessage.type === 'success' ? '#0369A1' : '#DC2626'
             }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 {fyMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
@@ -844,7 +844,7 @@ export const Configuration: React.FC = () => {
                   {targetList.map(t => (
                     <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '6px', borderBottom: '1px dashed var(--color-border)' }}>
                       <span style={{ fontWeight: 600 }}>{t.fiscal_year.startsWith('FY') ? t.fiscal_year : `FY${t.fiscal_year}`} - {t.quarter}</span>
-                      <span style={{ color: '#15803D', fontWeight: 700 }}>{formatCurrency(t.target_amount)}</span>
+                      <span style={{ color: '#475569', fontWeight: 700 }}>{formatCurrency(t.target_amount)}</span>
                     </li>
                   ))}
                 </ul>
@@ -859,7 +859,7 @@ export const Configuration: React.FC = () => {
               marginTop: '16px', 
               backgroundColor: targetMessage.type === 'success' ? '#DCFCE7' : '#FEE2E2',
               borderColor: targetMessage.type === 'success' ? '#A7F3D0' : '#FCA5A5',
-              color: targetMessage.type === 'success' ? '#15803D' : '#EF4444'
+              color: targetMessage.type === 'success' ? '#0369A1' : '#DC2626'
             }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 {targetMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
@@ -871,14 +871,14 @@ export const Configuration: React.FC = () => {
 
         {/* Section 2 & 3: File Import Panels */}
         {pendingImport && (
-          <div className="card" style={{ borderLeft: '4px solid #16A34A', backgroundColor: '#F0FDF4', padding: '24px', marginBottom: '24px' }}>
+          <div className="card" style={{ borderLeft: '4px solid #0284C7', backgroundColor: '#F0F9FF', padding: '24px', marginBottom: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#14532D', margin: 0 }}>
-                  <FileSpreadsheet size={24} style={{ color: '#16A34A' }} />
+                <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0369A1', margin: 0 }}>
+                  <FileSpreadsheet size={24} style={{ color: '#0284C7' }} />
                   Excel Import Preview & Mappings (Pending Confirmation)
                 </span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#16A34A', backgroundColor: '#DCFCE7', padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#0284C7', backgroundColor: '#E0F2FE', padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
                   {pendingImport.type === 'approved' ? 'Approved Projects List' : 'Open Projects List'}
                 </span>
               </div>
@@ -894,7 +894,7 @@ export const Configuration: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span style={{ color: '#374151', fontWeight: 600 }}>Unique Project IDs:</span>
-                  <span style={{ color: '#15803D', fontSize: '1rem', fontWeight: 'bold' }}>{pendingImport.uniqueCount} rows</span>
+                  <span style={{ color: '#0369A1', fontSize: '1rem', fontWeight: 'bold' }}>{pendingImport.uniqueCount} rows</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span style={{ color: '#374151', fontWeight: 600 }}>Duplicate IDs Removed:</span>
@@ -958,12 +958,12 @@ export const Configuration: React.FC = () => {
                           <td style={{ padding: '6px 8px', color: '#111827' }}>
                             <span style={{ color: '#6B7280' }}>{p._raw_date || '(Blank)'}</span>
                             <span> ➔ </span>
-                            <strong style={{ color: '#15803D' }}>{p.approval_date || p.created_date || 'NULL'}</strong>
+                            <strong style={{ color: '#0369A1' }}>{p.approval_date || p.created_date || 'NULL'}</strong>
                           </td>
                           <td style={{ padding: '6px 8px', color: '#111827' }}>
                             <span style={{ color: '#6B7280' }}>{p._raw_comp_date || '(Blank)'}</span>
                             <span> ➔ </span>
-                            <strong style={{ color: p.completion_date ? '#15803D' : '#9CA3AF' }}>{p.completion_date || 'NULL'}</strong>
+                            <strong style={{ color: p.completion_date ? '#0369A1' : '#9CA3AF' }}>{p.completion_date || 'NULL'}</strong>
                           </td>
                         </tr>
                       ))}
@@ -979,7 +979,7 @@ export const Configuration: React.FC = () => {
                   {Object.entries(pendingImport.mappedColumns).map(([field, mappedHeader]) => (
                     <div key={field} style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #E5E7EB', paddingBottom: '4px' }}>
                       <span style={{ color: '#4B5563', fontWeight: 500 }}>{field}:</span>
-                      <strong style={{ color: '#15803D' }}>{mappedHeader}</strong>
+                      <strong style={{ color: '#0369A1' }}>{mappedHeader}</strong>
                     </div>
                   ))}
                 </div>
@@ -1121,7 +1121,7 @@ export const Configuration: React.FC = () => {
                   <span>Total Rows Evaluated:</span>
                   <strong>{approvedImportSummary.totalRows}</strong>
                 </div>
-                <div className="summary-item" style={{ color: '#15803D' }}>
+                <div className="summary-item" style={{ color: '#0369A1' }}>
                   <span>Records Inserted/Updated:</span>
                   <strong>{approvedImportSummary.inserted + approvedImportSummary.updated}</strong>
                 </div>
@@ -1133,7 +1133,7 @@ export const Configuration: React.FC = () => {
           <div className="card">
             <div className="card-header-row" style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '16px' }}>
               <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileSpreadsheet size={20} style={{ color: '#FACC15' }} />
+                <FileSpreadsheet size={20} style={{ color: '#F59E0B' }} />
                 Import Open Projects
               </span>
             </div>
@@ -1172,7 +1172,7 @@ export const Configuration: React.FC = () => {
             </div>
 
             <label className="import-upload-zone" style={{ borderStyle: 'dashed', opacity: !importFiscalYear ? 0.6 : 1, cursor: !importFiscalYear ? 'not-allowed' : 'pointer' }}>
-              <Upload style={{ color: '#FACC15' }} size={32} />
+              <Upload style={{ color: '#F59E0B' }} size={32} />
               <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1F2937' }}>
                 {importLoading === 'open' ? 'Analyzing file structure...' : !importFiscalYear ? '⚠️ Please select a Target Import FY first' : 'Click to select or drag Excel file'}
               </span>
@@ -1209,8 +1209,8 @@ export const Configuration: React.FC = () => {
         </div>
 
         {importError && (
-          <div className="card" style={{ borderLeft: '4px solid #EF4444', backgroundColor: '#FEE2E2' }}>
-            <div style={{ display: 'flex', gap: '10px', color: '#B91C1C' }}>
+          <div className="card" style={{ borderLeft: '4px solid #DC2626', backgroundColor: '#FCA5A5' }}>
+            <div style={{ display: 'flex', gap: '10px', color: '#DC2626' }}>
               <AlertCircle size={20} />
               <div>
                 <strong style={{ fontSize: '0.875rem' }}>Import Validation Error</strong>
